@@ -16,7 +16,16 @@ set(RESIM_PATH "/home/brant/.local/bin/")
 
 #TODO: try fetching rmkit.h from https://build.rmkit.dev/master/latest/rm/rmkit.h
 
-add_executable(${PROJECT_NAME}-dev main.cpp)
+add_executable(${PROJECT_NAME}-dev main.cpp
+        ${CMAKE_SOURCE_DIR}/rmkit/src/build/stb.x86.o)
+target_compile_options(${PROJECT_NAME}-dev -D"DEV=1" -D"REMARKABLE_IMPLEMENTATION")
+
+
+#g++ -c ../vendor/stb/stb.cpp -o ../build/stb.x86.o -fPIC -Os
+add_library(stb.x86.o ${CMAKE_SOURCE_DIR}/rmkit/src/vendor/stb/stb.cpp)
+target_compile_options(stb.x86.o PRIVATE -fPIC -Os -g)
+
+add_dependencies(${PROJECT_NAME}-dev stb.x86.o)
 
 #TODO: this PATH match will never work, figure out how to probe for the executable more directly
 if(RESIM_PATH OR $ENV{PATH} MATCHES "resim")
