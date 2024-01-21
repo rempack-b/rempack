@@ -1,3 +1,0 @@
-[submodule "include/rmkit"]
-	path = include/rmkit
-	url = https://github.com/rmkit-dev/rmkit.git
