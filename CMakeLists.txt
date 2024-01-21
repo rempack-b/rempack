@@ -5,46 +5,55 @@ project(rempack)
 
 set(CMAKE_CXX_STANDARD 17)
 
+#sanity checks for local toolchain setup
+
+#to enable local emulation, install resim ()
+#if resim is not available in the PATH environment variable, you may specify it here
+#set(RESIM_ALTERNATE_PATH "/home/brant/.local/bin/")
+
+find_program(RESIM_PATH resim
+        "$ENV{PATH}" "${RESIM_ALTERNATE_PATH}")
+
+if(NOT RESIM_PATH)
+    message(WARNING "Resim is not found in any search path. Local emulation disabled!")
+endif ()
+
+#docker is required to build native images
+find_program(DOCKER_PATH docker
+            "$ENV{PATH}" REQUIRED)
+
+
 #user@host same as an SSH command
 #host string should be an IP address or a hostname, if configured
 set(REMARKABLE_HOST "root@remarkable")
 
-#to enable local emulation, install resim () and set the path here
-#do not include 'resim' at the end of the path, only the directory (with trailing slash)
-#may be omitted if the resim binary is in the PATH variable for this environment
-set(RESIM_PATH "/home/brant/.local/bin/")
+set(RMKIT_PATH "${CMAKE_SOURCE_DIR}/include/rmkit")
 
 #TODO: try fetching rmkit.h from https://build.rmkit.dev/master/latest/rm/rmkit.h
 
-add_executable(${PROJECT_NAME}-dev main.cpp
-        ${CMAKE_SOURCE_DIR}/rmkit/src/build/stb.x86.o)
-target_compile_options(${PROJECT_NAME}-dev -D"DEV=1" -D"REMARKABLE_IMPLEMENTATION")
+add_executable(${PROJECT_NAME}-dev main.cpp)
+#target_compile_options(${PROJECT_NAME}-dev -D DEV=1 -D REMARKABLE_IMPLEMENTATION)
 
-
-#g++ -c ../vendor/stb/stb.cpp -o ../build/stb.x86.o -fPIC -Os
-add_library(stb.x86.o ${CMAKE_SOURCE_DIR}/rmkit/src/vendor/stb/stb.cpp)
-target_compile_options(stb.x86.o PRIVATE -fPIC -Os -g)
-
-add_dependencies(${PROJECT_NAME}-dev stb.x86.o)
-
-#TODO: this PATH match will never work, figure out how to probe for the executable more directly
-if(RESIM_PATH OR $ENV{PATH} MATCHES "resim")
-    message(NOTICE "Resim path looks good")
+if(RESIM_PATH)
+    message(NOTICE "Resim found at ${RESIM_PATH}. Setting up target...")
     add_custom_target(Simulate
             COMMAND ${RESIM_PATH}resim ${CMAKE_SOURCE_DIR}/artefacts/${PROJECT_NAME}
             VERBATIM)
     add_dependencies(Simulate build_native)
 else()
-    message(NOTICE "Resim not found in PATH, Simulate target disabled!")
+    message(NOTICE "Resim path not found, Simulate target disabled!")
 endif()
 
-#TODO: find a way to verify that docker is installed and available
-#docker must be installed to build for the actual hardware
 add_custom_target(build_native
         COMMAND docker run -i -v /home/brant/git/rempack:/mnt/project --pull missing -w /mnt/project ghcr.io/toltec-dev/toolchain:v3.1 cmake . -B artefacts
         VERBATIM)
 
+#TODO: we can probably make this an external .sh script?
 add_custom_target(Install
         COMMAND scp ${CMAKE_SOURCE_DIR}/artefacts/${PROJECT_NAME} ${REMARKABLE_HOST}:/root/${PROJECT_NAME}
         VERBATIM)
 add_dependencies(Install build_native)
+
+add_custom_target(rmkit_docker
+        COMMAND cd ${RMKIT_PATH} && make docker
+        VERBATIM)
