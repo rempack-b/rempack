@@ -15,7 +15,9 @@ General order of operations:
 
 rmkit has makefile options to automate docker builds, but it deletes some files that I'd rather keep. It's easy enough to bypass that and take control of build more directly in the docker image. The big thing was the `stb.x86.o`. I haven't looked at exactly what that is doing, but it's important.
 
-There are also some environment variables that need to be defined. One is #REMARKABLE_IMPLEMENTATION, the other is a path to some asset file, which can probably just point to a blank file. Need to look into what the hell that REMARKABLE_IMPLEMENTATION flag is doing.
+There are also some environment variables that need to be defined. One is `RMKIT_IMPLEMENTATION`, the other is `font_embed.h` (see below). Need to look into what the hell that REMARKABLE_IMPLEMENTATION flag is doing.
+
+Update: it doesn't seem to be anything significant. The flag just disables a bunch of what appears to be boilerplate. I really don't get why it's there? Maybe this is an exclusive or to `REMARKABLE`, which flags for a native build. Anyway, it seems to be required at all times, so we'll go with that.
 
 We also need to look at the asset builder. We'll need it eventually.
 
@@ -33,4 +35,16 @@ rmkit needs the `python` flavor, and you have to `pip install okp` before buildi
 
 CMake was a CMistake.
 
-At some point I need to look at CLion's docker support. I'm not really sure what it's actually for?
+At some point I need to look at CLion's docker support. It seems to just keep the docker container in the background and uses it instead of calling the native build tools? 
+
+# Build server
+
+rmkit has an automated build server that posts compiled binaries, including stb.arm.o
+
+This isn't enough. We have the full rmkit.h file, but we're missing two things: font_embed.h and stb.x86.o
+
+font_embed is a free font serialized to a byte array with some metadata. It's in the rmkit repo at `src/rmkit/`. You have to `#define FONT_EMBED_H "rel/path/to/font_embed.h"` somewhere to tell rmkit where to look. The path can be excluded if CMake includes the path for you.
+
+The stb library is an image parser of some description. It's available as source, but rmkit optimized their build system by compiling stb once and sharing the binary with all projects. So we need the .o file to build against. This is available at `src/vendor/stb` and we can compile it with the normal tools to target x86.
+
+So, we need to grab the release of `rmkit.h` from the server, and also clone the git repo so we can build `stb` and to also nab `font_embed.h`. Honestly might just copy or recreate the font and distribute it directly. Would save a step.
