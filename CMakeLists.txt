@@ -1,22 +1,22 @@
 cmake_minimum_required(VERSION 3.21)
 
 #set your project name here. this will be used throughout the build system
+#this is also the name of the compiled binary
 project(rempack)
 
 set(CMAKE_CXX_STANDARD 17)
 
-#sanity checks for local toolchain setup
 
 #to enable local emulation, install resim (link here)
 #if resim is not available in the PATH environment variable, you may specify it here
 #set(RESIM_ALTERNATE_PATH "~/.local/bin/")
 
-find_program(RESIM_PATH resim
-        "$ENV{PATH}" "${RESIM_ALTERNATE_PATH}")
+#find_program(RESIM_PATH resim
+#        "$ENV{PATH}" "${RESIM_ALTERNATE_PATH}")
 
-if(NOT RESIM_PATH)
-    message(WARNING "Resim is not found in any search path. Local emulation disabled!")
-endif ()
+#if(NOT RESIM_PATH)
+#    message(WARNING "Resim is not found in any search path. Local emulation disabled!")
+#endif ()
 
 #user@host same as an SSH command
 #host string should be an IP address or a hostname, if configured
@@ -56,17 +56,8 @@ include_directories(SYSTEM "${RMKIT_DIR}")
 #for font_embed.h
 include_directories("${CMAKE_SOURCE_DIR}/include")
 
-#set(CMAKE_SYSTEM_NAME "Linux")
-#set(CMAKE_SYSTEM_NAME "Arm")
-#set(CMAKE_SYSTEM_NAME "Remarkable")
-set(CMAKE_CXX_COMPILER arm-linux-gnueabihf-g++)
-set(CMAKE_C_COMPILER arm-linux-gnueabihf-gcc)
-#set(STRIP_BIN arm-linux-gnueabihf-strip)
-
 add_executable(${PROJECT_NAME} main.cpp)
 target_compile_options(${PROJECT_NAME}
-        PUBLIC -pthread -lpthread -fdata-sections -ffunction-sections -Wl,--gc-sections --verbose
-        #PUBLIC -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++
         PUBLIC $<$<CONFIG:Debug>:-O0>
         PUBLIC $<$<CONFIG:Release>:-O3>
 )
@@ -76,31 +67,26 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         STB_IMAGE_RESIZE_IMPLEMENTATION
         STB_IMAGE_WRITE_IMPLEMENTATION
         STB_TRUETYPE_IMPLEMENTATION
-        REMARKABLE=1
-        #$<$<CONFIG:Release>:REMARKABLE>
-        #$<$<CONFIG:Debug>:FONT_EMBED_H="font_embed.h">
+        $<$<CONFIG:Release>:REMARKABLE>
+        $<$<CONFIG:Debug>:FONT_EMBED_H="font_embed.h">
         )
 
-if(RESIM_PATH)
-#    message(NOTICE "Resim found at ${RESIM_PATH}. Setting up target...")
-    add_custom_target(Simulate
-            COMMAND ${RESIM_PATH} ${CMAKE_BINARY_DIR}/${PROJECT_NAME}
-            VERBATIM)
-    add_dependencies(Simulate ${PROJECT_NAME})
-#else()
-#    message(NOTICE "Resim path not found, Simulate target disabled!")
-endif()
+#if(RESIM_PATH)
+##    message(NOTICE "Resim found at ${RESIM_PATH}. Setting up target...")
+#    add_custom_target(Simulate
+#            COMMAND ${RESIM_PATH} ${CMAKE_BINARY_DIR}/${PROJECT_NAME}
+#            VERBATIM)
+#    add_dependencies(Simulate ${PROJECT_NAME})
+##else()
+##    message(NOTICE "Resim path not found, Simulate target disabled!")
+#endif()
 
-add_custom_target(Install
-        COMMAND scp ${CMAKE_SOURCE_DIR}/artefacts/${PROJECT_NAME} ${REMARKABLE_HOST}:/root/${PROJECT_NAME}
-        VERBATIM)
-add_dependencies(Install ${PROJECT_NAME})
 
-add_custom_target(build_docker
-        COMMAND docker run -i -v ${CMAKE_SOURCE_DIR}:/mnt/project --pull missing -w /mnt/project ghcr.io/toltec-dev/toolchain:v3.1 sh stupid_build_script.sh
+add_custom_target(docker_release
+        COMMAND docker run -i -v "${CMAKE_SOURCE_DIR}:/mnt/project" --pull missing -w /mnt/project ghcr.io/toltec-dev/toolchain:v3.1 sh docker_build_script.sh
         VERBATIM)
 
 add_custom_target(install_docker
-        COMMAND sh run_remote.sh rempack
+        COMMAND cd .. && sh docker_run_app.sh ${CMAKE_PROJECT_NAME}
         VERBATIM)
-add_dependencies(install_docker build_docker)
+add_dependencies(install_docker docker_release)
