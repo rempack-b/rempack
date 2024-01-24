@@ -6,30 +6,19 @@ project(rempack)
 
 set(CMAKE_CXX_STANDARD 17)
 
-
-#to enable local emulation, install resim (link here)
-#if resim is not available in the PATH environment variable, you may specify it here
-#set(RESIM_ALTERNATE_PATH "~/.local/bin/")
-
-#find_program(RESIM_PATH resim
-#        "$ENV{PATH}" "${RESIM_ALTERNATE_PATH}")
-
-#if(NOT RESIM_PATH)
-#    message(WARNING "Resim is not found in any search path. Local emulation disabled!")
-#endif ()
-
 #user@host same as an SSH command
 #host string should be an IP address or a hostname, if configured
-#you can also simply set this variable as an argument passed to CMake: -DREMARKABLE_HOST="root@192.168.1.102"
+#you can also simply set this variable as an argument passed to CMake: -DREMARKABLE_HOST="192.168.1.102"
 if(NOT REMARKABLE_HOST)
-    set(REMARKABLE_HOST "root@remarkable")
+    set(REMARKABLE_HOST "remarkable")
 endif()
 
+#automatically download rmkit.h
 set(RMKIT_DIR "${CMAKE_BINARY_DIR}/include/rmkit")
 set(HASH_FILE "${RMKIT_DIR}/sha256sum.txt")
 set(RMKIT_FILE "${RMKIT_DIR}/rmkit.h")
 
-#fetch rmkit.h from the build server
+#don't hit the server if we already have the file
 if(NOT EXISTS ${RMKIT_FILE})
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/include/rmkit)
     file(DOWNLOAD https://build.rmkit.dev/master/latest/rm/rmkit.h "${RMKIT_FILE}")
@@ -45,15 +34,16 @@ if(NOT EXISTS ${RMKIT_FILE})
     file(REMOVE ${HASH_FILE})
 
     if(NOT "${RMKIT_CONTENT_HASH}" STREQUAL "${HASH_VALUE}")
-        message(FATAL_ERROR "Hash verification failed for rmkit.h! Claim: ${HASH_VALUE} Computed: ${RMKIT_CONTENT_HASH}")
+        message(FATAL_ERROR "Hash verification failed for rmkit.h!")
         file(REMOVE ${RKIT_FILE})
-    else()
-        message("Hash verification successful for rmkit.h!")
+    #else()
+        #message("Hash verification successful for rmkit.h!")
     endif()
 endif()
-
+#add rmkit.h to our system header search paths
 include_directories(SYSTEM "${RMKIT_DIR}")
-#for font_embed.h
+
+#add /include to search paths for font_embed.h
 include_directories("${CMAKE_SOURCE_DIR}/include")
 
 add_executable(${PROJECT_NAME} main.cpp)
@@ -61,15 +51,37 @@ target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-O0>
         PUBLIC $<$<CONFIG:Release>:-O3>
 )
+#these can also be done as #define statements, but they MUST appear before rmkit.h
+#all these defines are necessary to build successfully
+#they're here for convenience (you can never forget them) and also to ensure
+#they appear early enough in the linking stage
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         RMKIT_IMPLEMENTATION
         STB_IMAGE_IMPLEMENTATION
         STB_IMAGE_RESIZE_IMPLEMENTATION
         STB_IMAGE_WRITE_IMPLEMENTATION
         STB_TRUETYPE_IMPLEMENTATION
+        #when building for native hardware, REMARKABLE must be defined
         $<$<CONFIG:Release>:REMARKABLE>
+        #debug builds require an external font file. I've provided one for you in /include
         $<$<CONFIG:Debug>:FONT_EMBED_H="font_embed.h">
         )
+#see also: rm-toolchain.cmake
+
+
+
+#below is an unfinished experiment in using rmkit-sim to do local emulation
+#I'll finish it someday
+#to enable local emulation, install resim (link here)
+#if resim is not available in the PATH environment variable, you may specify it here
+#set(RESIM_ALTERNATE_PATH "~/.local/bin/")
+
+#find_program(RESIM_PATH resim
+#        "$ENV{PATH}" "${RESIM_ALTERNATE_PATH}")
+
+#if(NOT RESIM_PATH)
+#    message(WARNING "Resim is not found in any search path. Local emulation disabled!")
+#endif ()
 
 #if(RESIM_PATH)
 ##    message(NOTICE "Resim found at ${RESIM_PATH}. Setting up target...")
@@ -83,10 +95,12 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 
 add_custom_target(docker_release
-        COMMAND docker run -i -v "${CMAKE_SOURCE_DIR}:/mnt/project" --pull missing -w /mnt/project ghcr.io/toltec-dev/toolchain:v3.1 sh docker_build_script.sh
+        COMMAND docker run -i -v "${CMAKE_SOURCE_DIR}:/mnt/project" --pull missing -w /mnt/project ghcr.io/toltec-dev/toolchain:latest sh docker_build_script.sh
         VERBATIM)
 
-add_custom_target(install_docker
-        COMMAND cd .. && sh docker_run_app.sh ${CMAKE_PROJECT_NAME}
+add_custom_target(run_app
+        COMMAND cd .. && sh run_app.sh ${CMAKE_PROJECT_NAME}
         VERBATIM)
-add_dependencies(install_docker docker_release)
+#cause run_app to trigger a docker build if it hasn't run yet
+#Clion users may want to change this to (run_app ${CMAKE_PROJECT_NAME}) to not invoke docker
+add_dependencies(run_app docker_release)

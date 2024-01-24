@@ -1,4 +1,7 @@
 #mostly stolen from rmkit
+#copies your app to the tablet, runs it, then waits for interrupt
+#before closing it and restarting the remarkable interface
+
 
 APP=${1}
 BASE_DIR="/home/root"
@@ -18,6 +21,7 @@ function cleanup() {
 trap cleanup EXIT
 trap cleanup SIGINT
 
+#this is probably brittle, I'm sure it's fine
 scp cmake-build-docker/${APP} ${RM_USER}@${REMARKABLE_HOST}:${BASE_DIR}/${APP}
 kill_remote_app
 echo "RUNNING ${APP}"
