@@ -46,7 +46,8 @@ include_directories(SYSTEM "${RMKIT_DIR}")
 #add /include to search paths for font_embed.h
 include_directories("${CMAKE_SOURCE_DIR}/include")
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp
+        src/rempack.cpp)
 target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-O0>
         PUBLIC $<$<CONFIG:Release>:-O3>
