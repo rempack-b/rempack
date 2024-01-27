@@ -1,6 +1,4 @@
 #include <iostream>
-
-#define FONT_EMBED_H "font_embed.h"
 #include <rmkit.h>
 
 int main()
