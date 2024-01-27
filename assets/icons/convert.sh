@@ -8,7 +8,7 @@ for image in svg/*.svg; do
     HOPATH="header/$(basename "${image}" .svg)_embed.h"  
     echo ${image}
     if [ ! -f "${OPATH}" ]; then
-     inkscape -w 32 -h 32 ${image} -o ${OPATH}
+     inkscape -w 256 -h 256 ${image} -o ${OPATH}
     fi
     
     echo "#include \"${HOPATH}\"" >> ${APATH}
