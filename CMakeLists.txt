@@ -49,9 +49,10 @@ include_directories("${CMAKE_SOURCE_DIR}/assets")
 
 add_executable(${PROJECT_NAME} src/main.cpp
         src/rempack.cpp
-        ${RMKIT_FILE})
+        ${RMKIT_FILE}
+)
 target_compile_options(${PROJECT_NAME}
-        PUBLIC $<$<CONFIG:Debug>:-O0>
+        PUBLIC $<$<CONFIG:Debug>:-Oz -g -Wall -Wno-unused-variable>
         PUBLIC $<$<CONFIG:Release>:-O3>
 )
 #these can also be done as #define statements, but they MUST appear before rmkit.h
@@ -65,12 +66,18 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         STB_IMAGE_WRITE_IMPLEMENTATION
         STB_TRUETYPE_IMPLEMENTATION
         #when building for native hardware, REMARKABLE must be defined
-        $<$<CONFIG:Release>:REMARKABLE>
+        $<$<STREQUAL:${TARGET_PLATFORM},rm>:REMARKABLE>
         #debug builds require an external font file. I've provided one for you in /include
-        $<$<CONFIG:Debug>:FONT_EMBED_H="font_embed.h">
+        $<$<STREQUAL:${TARGET_PLATFORM},x86>:FONT_EMBED_H="font_embed.h">
         )
 #see also: rm-toolchain.cmake
 
+#add_library(rmkit ${RMKIT_FILE})
+#set_target_properties(rmkit PROPERTIES LINKER_LANGUAGE CXX)
+#target_precompile_headers(rmkit PRIVATE ${RMKIT_FILE})
+
+#target_precompile_headers(${PROJECT_NAME} REUSE_FROM rmkit)
+#target_link_libraries(${PROJECT_NAME} PRIVATE rmkit)
 
 
 #below is an unfinished experiment in using rmkit-sim to do local emulation
@@ -102,7 +109,7 @@ add_custom_target(docker_release
         VERBATIM)
 
 add_custom_target(run_app
-        COMMAND cd .. && ./run_app.sh ${CMAKE_PROJECT_NAME}
+        COMMAND cd .. && sh run_app.sh ${CMAKE_PROJECT_NAME}
         VERBATIM)
 #cause run_app to trigger a docker build if it hasn't run yet
 #Clion users may want to change this to (run_app ${CMAKE_PROJECT_NAME}) to not invoke docker

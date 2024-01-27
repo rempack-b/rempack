@@ -7,18 +7,38 @@
   },
   "configurePresets": [
     {
-      "name": "Debug",
+      "name": "Debug x86",
       "hidden": false,
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TARGET_PLATFORM": "x86"
       }
     },
     {
-      "name": "Release",
+      "name": "Release x86",
+      "hidden": false,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TARGET_PLATFORM": "x86"
+      }
+    },
+    {
+      "name": "Debug Native",
       "hidden": false,
       "toolchainFile": "rm-toolchain.cmake",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TARGET_PLATFORM": "rm",
+        "DCMAKE_CXX_COMPILER_LAUNCHER": "ccache"
+      }
+    },
+    {
+      "name": "Release Native",
+      "hidden": false,
+      "toolchainFile": "rm-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TARGET_PLATFORM": "rm"
       }
     }
   ]
