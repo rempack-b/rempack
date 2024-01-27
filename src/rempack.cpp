@@ -62,9 +62,6 @@ ui::Scene buildHomeScene(int width, int height) {
     auto groupPane = new ui::VerticalLayout(0,0,500,800,scene);
     applicationPane->pack_start(groupPane);
 
-    auto editor = new widgets::RoundCornerEditor(300,250,800,800,searchBox);
-    applicationPane->pack_center(editor);
-    add_children_to_scene(scene, editor);
 
     return scene;
 }

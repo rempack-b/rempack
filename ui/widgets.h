@@ -12,16 +12,23 @@
 
 namespace widgets {
     /*
- * ╭----╮
- * |    |
- * ╰----╯
- *
- * Draws all four rounded corners as described by the center and radius of the top-left corner,
- * and the offset to the bottom-right corner
- *
- * Optionally, you can specify a color for the border, its thickness, and a gradient
- * Thickness expands outward from the centerpoint, and the gradient is a simple linear function
- */
+     * ╭----╮
+     * |    |
+     * ╰----╯
+     *
+     * Draws all four rounded corners as described by the center and radius of the top-left corner,
+     * and the offset to the bottom-right corner
+     *
+     * Optionally, you can specify a color for the border, its thickness, and a gradient
+     * Thickness expands outward from the centerpoint, and the gradient is a sigmoid function (utils::sigmoid)
+     *
+     * colors are specified as a float in the range (0,1) where 0 is black and 1 is white (see color::from_float)
+     *
+     * This is an adaptation of the circle outline algorithm at framebuffer::draw_circle_outline
+     * The gradient is accomplished by drawing multiple 1px arcs with diminishing color in 1px steps away from center
+     *
+     * We only actually compute one eighth of the circle and mirror it to all the other octants
+     */
 
     inline void drawRoundedCorners(int x0, int y0, int ox, int oy, int radius, framebuffer::FB *fb,
                                    float grayfColor = 0, uint stroke = 1, bool gradient = false,
@@ -34,6 +41,7 @@ namespace widgets {
         int h = stroke;
         auto color = color::from_float(grayfColor);
 
+        //since we use _draw_rect_fast, we need to manually mark the area dirty
         fb->update_dirty(fb->dirty_area, x0 - radius - stroke, y0 - radius - stroke);
         fb->update_dirty(fb->dirty_area, x0 + ox + radius + stroke, y0 + oy + radius + stroke);
 
@@ -68,6 +76,10 @@ namespace widgets {
         }
     }
 
+    //draws a box with rounded corners with some style options
+    //calls into drawRoundedCorners first, then draws the lines connecting the arcs
+    //gradient is based on a sigmoid function (see utils::sigmoid)
+    //colors are specified as a float in the range (0,1) where 0 is black and 1 is white (see color::from_float)
     inline void drawRoundedBox(int x0, int y0, int w, int h, int radius, framebuffer::FB *fb,
                                int stroke = 1, float grayfColor = 0, int shrink = 0, bool gradient = false,
                                float grayfendColor = 1,
@@ -76,11 +88,6 @@ namespace widgets {
         int sy = y0 + shrink;
         int dx = w - (2 * shrink);
         int dy = h - (2 * shrink);
-
-        //this ends up clobbering everything inside the box
-        //assume the caller has already cleared the framebuffer
-        //fb->draw_rect(sx - radius - stroke, sy - radius - stroke,
-        //              sx + dx + radius + stroke, sy + dy + radius + stroke, WHITE, true);
 
         if (!gradient) {
             auto color = color::from_float(grayfColor);
@@ -106,33 +113,14 @@ namespace widgets {
         }
     }
 
-    inline void moveChildren(const shared_ptr<ui::Widget> &widget, int lastx, int lasty) {
-        int x = widget->x - lastx;
-        int y = widget->y - lasty;
-        for (const auto &c: widget->children) {
-            auto lx = c->x;
-            auto ly = c->y;
-            c->x += x;
-            c->y += y;
-            moveChildren(c, lx, ly);
-        }
-    }
 
     //TODO: this should really just be a subclass of Button, not a new widget
 //basically a reimplementation of ui::Button with a clickable image instead of text
-    class ImageButton : public ui::Widget {
+    class ImageButton : public ui::Button {
     public:
-        ImageButton(int x, int y, int w, int h, icons::Icon icon) : Widget(x, y, w, h) {
+        ImageButton(int x, int y, int w, int h, icons::Icon icon) : Button(x, y, w, h, "") {
             pixmap = make_shared<ui::Pixmap>(x, y, w, h, icon);
         }
-
-        void on_mouse_enter(input::SynMotionEvent &ev) override { dirty = 1; }
-
-        void on_mouse_leave(input::SynMotionEvent &ev) override { dirty = 1; }
-
-        void on_mouse_down(input::SynMotionEvent &ev) override { dirty = 1; }
-
-        void on_mouse_click(input::SynMotionEvent &ev) override { dirty = 1; }
 
         void render() override{
             this->undraw();
@@ -152,7 +140,7 @@ namespace widgets {
         float startColor;
         float endColor;
         bool gradient;
-        //move the center point of the corner radius inwards
+        //shrink the border by this many pixels. Generally, set this equal to cornerRadius
         int inset;
         float expA;
         float expB;
@@ -163,13 +151,13 @@ namespace widgets {
             startColor = 0;
             endColor = 1;
             gradient = true;
-            inset = 10; //reset to 10
+            inset = 10;
             expA = -9.f;
             expB = 1.f;
         }
     };
 
-/*
+
     class RoundCornerWidget : public ui::Widget {
     public:
         RoundCornerWidget(int x, int y, int w, int h, RoundCornerStyle style) : ui::Widget(x, y, w, h) {
@@ -178,7 +166,6 @@ namespace widgets {
         RoundCornerStyle style;
 
         void undraw() override {
-            return;
             //top
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
                           y + style.inset - style.cornerRadius - style.borderThickness,
@@ -206,14 +193,13 @@ namespace widgets {
         }
 
         void render_border() override {
-            return;
             fb->waveform_mode = WAVEFORM_MODE_GC16;
             drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.borderThickness,
                            style.startColor, style.inset, style.gradient, style.endColor,
                            style.expA, style.expB);
         }
     };
-*/
+
     //same as ui::TextInput except it draws fancy rounded corners
 class RoundedTextInput: public ui::TextInput{
 public:
@@ -432,6 +418,30 @@ RoundCornerStyle style;
             target->style.endColor = p;
             inputEnd->mark_redraw();
             mark_redraw();
+        }
+    };
+
+    class ListBox: RoundCornerWidget{
+    public:
+        int itemHeight;
+        struct ListItem{
+            string label;
+            void* object;
+        };
+        vector<shared_ptr<ui::Button>> contents;
+        ListBox(int x, int y, int w, int h, int itemHeight) : RoundCornerWidget(x,y,w,h,RoundCornerStyle()){
+            this->itemHeight = itemHeight;
+        }
+
+        void add(shared_ptr<ui::Button> item){
+            contents.push_back(item);
+            this->mark_redraw();
+        }
+
+        //void before_render() override{}
+
+        void render() override{
+
         }
     };
 }
