@@ -21,21 +21,22 @@ endif ()
 #docker is required to build native images
 find_program(DOCKER_PATH docker
             "$ENV{PATH}" REQUIRED)
-
+if(NOT DOCKER_PATH)
+    message(WARNING "Docker is not available! You won't be able to deploy to real hardware!")
+endif ()
 
 #user@host same as an SSH command
 #host string should be an IP address or a hostname, if configured
 set(REMARKABLE_HOST "root@remarkable")
 
-set(RMKIT_PATH "${CMAKE_SOURCE_DIR}/include/rmkit")
-
 #fetch rmkit.h from the build server
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/include)
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/include/rmkit)
+
+set(RMKIT_DIR "${CMAKE_BINARY_DIR}/include/rmkit")
+set(HASH_FILE "${RMKIT_DIR}/sha256sum.txt")
+set(RMKIT_FILE "${RMKIT_DIR}/rmkit.h")
+
 file(DOWNLOAD https://build.rmkit.dev/master/latest/rm/rmkit.h "${RMKIT_FILE}")
-
-set(HASH_FILE "${CMAKE_BINARY_DIR}/sha256sum.txt")
-set(RMKIT_FILE "${CMAKE_SOURCE_DIR}/include/rmkit.h")
-
 #verify downloaded file against posted hashes
 file(DOWNLOAD https://build.rmkit.dev/master/latest/rm/sha256sum.txt "${HASH_FILE}")
 file(READ "${HASH_FILE}" HASH_LINES)
@@ -52,18 +53,20 @@ else()
     message("Hash verification successful for rmkit.h!")
 endif()
 
-add_executable(${PROJECT_NAME}-dev main.cpp)
-#target_compile_options(${PROJECT_NAME}-dev -D DEV=1 -D REMARKABLE_IMPLEMENTATION)
+include_directories("${RMKIT_DIR}")
+#TODO: font embed include directory
+include_directories("${CMAKE_SOURCE_DIR}/include")
+add_executable(${PROJECT_NAME}-dev main.cpp stb.x86.o)
+target_compile_options(${PROJECT_NAME}-dev PUBLIC -O0 -g)#-D DEV=1 -D REMARKABLE_IMPLEMENTATION)
 
-if(RESIM_PATH)
+#if(RESIM_PATH)
     message(NOTICE "Resim found at ${RESIM_PATH}. Setting up target...")
     add_custom_target(Simulate
-            COMMAND ${RESIM_PATH}resim ${CMAKE_SOURCE_DIR}/artefacts/${PROJECT_NAME}
+            COMMAND resim ${CMAKE_BINARY_DIR}/${PROJECT_NAME}-dev
             VERBATIM)
-    add_dependencies(Simulate build_native)
-else()
+#else()
     message(NOTICE "Resim path not found, Simulate target disabled!")
-endif()
+#endif()
 
 add_custom_target(build_native
         COMMAND docker run -i -v /home/brant/git/rempack:/mnt/project --pull missing -w /mnt/project ghcr.io/toltec-dev/toolchain:v3.1 cmake . -B artefacts
@@ -74,7 +77,3 @@ add_custom_target(Install
         COMMAND scp ${CMAKE_SOURCE_DIR}/artefacts/${PROJECT_NAME} ${REMARKABLE_HOST}:/root/${PROJECT_NAME}
         VERBATIM)
 add_dependencies(Install build_native)
-
-add_custom_target(rmkit_docker
-        COMMAND cd ${RMKIT_PATH} && make docker
-        VERBATIM)
