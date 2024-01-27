@@ -35,4 +35,3 @@ The goal is to make the opkg repositories browsable, sortable, and searchable by
 - [ ] Seamless opkg repo update
 - [ ] Update notifications
 - [ ] Popularity contest
-
