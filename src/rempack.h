@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include <rmkit.h>
+//#include "defines.h"
 
-class rempack {
+class Rempack {
 public:
-    ui::Scene buildHomeScene(int width, int height);
+    void startApp();
+private:
 };

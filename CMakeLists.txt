@@ -45,9 +45,11 @@ include_directories(SYSTEM "${RMKIT_DIR}")
 
 #add /include to search paths for font_embed.h
 include_directories("${CMAKE_SOURCE_DIR}/include")
+include_directories("${CMAKE_SOURCE_DIR}/assets")
 
 add_executable(${PROJECT_NAME} src/main.cpp
-        src/rempack.cpp)
+        src/rempack.cpp
+        ${RMKIT_FILE})
 target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-O0>
         PUBLIC $<$<CONFIG:Release>:-O3>
@@ -100,8 +102,8 @@ add_custom_target(docker_release
         VERBATIM)
 
 add_custom_target(run_app
-        COMMAND cd .. && sh run_app.sh ${CMAKE_PROJECT_NAME}
+        COMMAND cd .. && ./run_app.sh ${CMAKE_PROJECT_NAME}
         VERBATIM)
 #cause run_app to trigger a docker build if it hasn't run yet
 #Clion users may want to change this to (run_app ${CMAKE_PROJECT_NAME}) to not invoke docker
-add_dependencies(run_app docker_release)
+add_dependencies(run_app ${PROJECT_NAME})
