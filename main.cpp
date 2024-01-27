@@ -1,11 +1,7 @@
 #include <iostream>
-//#include "rmkit/artifacts/rm/rmkit.h"
 
-//#define REMARKABLE
 #define FONT_EMBED_H "font_embed.h"
-#define RMKIT_IMPLEMENTATION
-
-#include "rmkit.h"
+#include <rmkit.h>
 
 int main()
 {
