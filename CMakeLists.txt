@@ -50,9 +50,10 @@ include_directories("${CMAKE_SOURCE_DIR}/assets")
 add_executable(${PROJECT_NAME} src/main.cpp
         src/rempack.cpp
         ${RMKIT_FILE}
+        assets/icons/icons_embed.h
 )
 target_compile_options(${PROJECT_NAME}
-        PUBLIC $<$<CONFIG:Debug>:-Oz -g -Wall -Wno-unused-variable>
+        PUBLIC $<$<CONFIG:Debug>:-O0 -g -Wall -Wno-unused-variable>
         PUBLIC $<$<CONFIG:Release>:-O3>
 )
 #these can also be done as #define statements, but they MUST appear before rmkit.h

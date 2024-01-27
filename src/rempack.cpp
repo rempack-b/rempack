@@ -9,48 +9,6 @@
 #include "../ui/utils.h"
 #define DEBUG_DRAW
 
-
-inline void testGradient(shared_ptr<framebuffer::FB> fb){
-    int stroke = 200;
-    int x = 100;
-    int y = 100;
-    int h = 200;
-    int stride = 5;
-
-    float dc = 1.f/stroke;
-    for(int i = 0; i <= stroke; i++){
-        for(int j = 0; j < h; j++){
-            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i)));
-        }
-    }
-    fb->draw_rect(x,y,h,h,BLACK, false);
-
-    y += h + 20;
-    for(int i = 0; i <= stroke; i++){
-        for(int j = 0; j < h; j++){
-            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i, -4, 2)));
-        }
-    }
-    fb->draw_rect(x,y,h,h,BLACK, false);
-
-    y += h + 20;
-    for(int i = 0; i <= stroke; i++){
-        for(int j = 0; j < h; j++){
-            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i, -12, 6)));
-        }
-    }
-    fb->draw_rect(x,y,h,h,BLACK, false);
-
-    y += h + 20;
-    for(int i = 0; i <= stroke; i++){
-        for(int j = 0; j < h; j++){
-            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i, -20, 8)));
-        }
-    }
-    fb->draw_rect(x,y,h,h,BLACK, false);
-}
-
-
 ui::Scene buildHomeScene(int width, int height);
 
 void Rempack::startApp() {
@@ -70,12 +28,19 @@ void Rempack::startApp() {
 
     while(true){
         ui::MainLoop::main();
-        testGradient(fb);
+        //fb->waveform_mode = WAVEFORM_MODE_GC16;
         ui::MainLoop::redraw();
         fb->waveform_mode = WAVEFORM_MODE_DU;
         ui::MainLoop::read_input();
     }
 
+}
+
+void add_children_to_scene(ui::Scene scene, ui::Widget *widget){
+    for(auto &c:widget->children){
+        scene->add(c);
+        add_children_to_scene(scene, c.get());
+    }
 }
 
 //1404x1872 - 157x209mm -- 226dpi
@@ -88,14 +53,18 @@ ui::Scene buildHomeScene(int width, int height) {
 
     auto settingButton = new widgets::ConfigButton(0,0,60,60);
     searchPane->pack_start(settingButton);
-    auto searchBox = new widgets::SearchBox(0,0,1000,60);
+    auto searchBox = new widgets::SearchBox(0,0,1000,60, widgets::RoundCornerStyle());
     searchPane->pack_center(searchBox);
+    //add_children_to_scene(scene, searchBox);
+    //add_children_to_scene(scene, settingButton);
 
     auto applicationPane = new ui::HorizontalLayout(0,0,width - 40, height - 400, scene);
     auto groupPane = new ui::VerticalLayout(0,0,500,800,scene);
     applicationPane->pack_start(groupPane);
 
-    auto editor = new widgets::RoundCornerEditor(250,250,800,800, widgets::RoundCornerStyle(), searchBox);
-    applicationPane->pack_end(editor);
+    auto editor = new widgets::RoundCornerEditor(300,250,800,800,searchBox);
+    applicationPane->pack_center(editor);
+    add_children_to_scene(scene, editor);
+
     return scene;
 }
