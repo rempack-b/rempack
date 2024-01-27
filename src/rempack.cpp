@@ -1,59 +1,54 @@
 //
 // Created by brant on 1/24/24.
 //
-
+//#define DEBUG_FB
 #include <rmkit.h>
 #include "rempack.h"
 #include "../assets/icons/icons_embed.h"
+#include "../ui/widgets.h"
+#include "../ui/utils.h"
+#define DEBUG_DRAW
 
-//basically a reimplementation of ui::Button with a clickable image instead of text
-class ImageButton :public ui::Widget{
-public:
-    ImageButton(int x, int y, int w, int h, icons::Icon icon): Widget(x,y,w,h){
-        pixmap = make_shared<ui::Pixmap>(x, y, w, h, icon);
-    }
-    void on_mouse_enter(input::SynMotionEvent &ev) override {dirty = 1;}
-    void on_mouse_leave(input::SynMotionEvent &ev) override {dirty = 1;}
-    void on_mouse_down(input::SynMotionEvent &ev) override {dirty = 1;}
-    void on_mouse_up(input::SynMotionEvent &ev) override {dirty = 1;}
 
-    void render() override{
-        this->undraw();
-        pixmap->x = x;
-        pixmap->y = y;
-        pixmap->render();
+inline void testGradient(shared_ptr<framebuffer::FB> fb){
+    int stroke = 200;
+    int x = 100;
+    int y = 100;
+    int h = 200;
+    int stride = 5;
 
-        auto color = WHITE;
-        bool fill = false;
-        if(mouse_inside) {
-            color = GRAY;
-            fill = true;
+    float dc = 1.f/stroke;
+    for(int i = 0; i <= stroke; i++){
+        for(int j = 0; j < h; j++){
+            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i)));
         }
-        if(mouse_down) {
-            color = BLACK;
-            fill = true;
+    }
+    fb->draw_rect(x,y,h,h,BLACK, false);
+
+    y += h + 20;
+    for(int i = 0; i <= stroke; i++){
+        for(int j = 0; j < h; j++){
+            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i, -4, 2)));
         }
-        fb->draw_rect(x, y, w, h, color, fill);
     }
-private:
-    shared_ptr<ui::Pixmap> pixmap;
-};
+    fb->draw_rect(x,y,h,h,BLACK, false);
 
-class SearchBox: ui::TextInput{
-public:
-    SearchBox(int x, int y, int w, int h, icons::Icon icon, const string text = ""): TextInput(x, y, w, h, text){
-        pixmap = make_shared<ui::Pixmap>(x, y, w, h, icon);
+    y += h + 20;
+    for(int i = 0; i <= stroke; i++){
+        for(int j = 0; j < h; j++){
+            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i, -12, 6)));
+        }
     }
-private:
-    shared_ptr<ui::Pixmap> pixmap;
-};
+    fb->draw_rect(x,y,h,h,BLACK, false);
 
-class ConfigButton : public ImageButton{
-public:
-    ConfigButton(int x, int y, int w, int h):ImageButton(x,y,w,h,ICON(assets::png_menu_png)){
-
+    y += h + 20;
+    for(int i = 0; i <= stroke; i++){
+        for(int j = 0; j < h; j++){
+            fb->_set_pixel(x + i, y + j, color::from_float(utils::sigmoid(dc * i, -20, 8)));
+        }
     }
-};
+    fb->draw_rect(x,y,h,h,BLACK, false);
+}
 
 
 ui::Scene buildHomeScene(int width, int height);
@@ -61,7 +56,6 @@ ui::Scene buildHomeScene(int width, int height);
 void Rempack::startApp() {
     shared_ptr<framebuffer::FB> fb;
     fb = framebuffer::get();
-
     fb->clear_screen();
 
     //auto scene = ui::make_scene();
@@ -70,9 +64,15 @@ void Rempack::startApp() {
     //auto t = new ui::Text(0,0,200,50, "hellorld");
     //scene->add(t);
 
+    ui::MainLoop::main();
+    ui::MainLoop::refresh();
+    ui::MainLoop::redraw();
+
     while(true){
         ui::MainLoop::main();
+        testGradient(fb);
         ui::MainLoop::redraw();
+        fb->waveform_mode = WAVEFORM_MODE_DU;
         ui::MainLoop::read_input();
     }
 
@@ -86,8 +86,16 @@ ui::Scene buildHomeScene(int width, int height) {
     auto searchPane = new ui::HorizontalLayout(0, 0, width, 100, scene);
     layout->pack_start(searchPane);
 
-    auto settingButton = new ConfigButton(0,0,60,60);
+    auto settingButton = new widgets::ConfigButton(0,0,60,60);
     searchPane->pack_start(settingButton);
+    auto searchBox = new widgets::SearchBox(0,0,1000,60);
+    searchPane->pack_center(searchBox);
 
+    auto applicationPane = new ui::HorizontalLayout(0,0,width - 40, height - 400, scene);
+    auto groupPane = new ui::VerticalLayout(0,0,500,800,scene);
+    applicationPane->pack_start(groupPane);
+
+    auto editor = new widgets::RoundCornerEditor(250,250,800,800, widgets::RoundCornerStyle(), searchBox);
+    applicationPane->pack_end(editor);
     return scene;
 }
