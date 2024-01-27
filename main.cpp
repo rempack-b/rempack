@@ -1,5 +1,7 @@
 #include <iostream>
-#include "rmkit/artifacts/rm/rmkit.h"
+//#include "rmkit/artifacts/rm/rmkit.h"
+
+#include "rmkit.h"
 
 int main()
 {
@@ -12,10 +14,9 @@ int main()
 
     auto scene = ui::make_scene();
     ui::MainLoop::set_scene(scene);
-    auto v = new ui::VerticalLayout(0,0,width,height,scene);
-    auto t = new ui::Text(0,0,100,50, "hellorld");
-    v->pack_start(t);
-    //scene->add(v);
+    auto t = new ui::Text(0,0,200,50, "hellorld");
+    //v->pack_start(t);
+    scene->add(t);
 
     while(true){
         ui::MainLoop::main();
