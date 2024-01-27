@@ -1,4 +1,6 @@
 #include <iostream>
+#include <stdio.h>
+#include <pthread.h>
 #include <rmkit.h>
 
 int main()
