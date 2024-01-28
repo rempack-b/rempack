@@ -44,6 +44,7 @@ namespace widgets {
         //since we use _draw_rect_fast, we need to manually mark the area dirty
         fb->update_dirty(fb->dirty_area, x0 - radius - stroke, y0 - radius - stroke);
         fb->update_dirty(fb->dirty_area, x0 + ox + radius + stroke, y0 + oy + radius + stroke);
+        fb->waveform_mode = WAVEFORM_MODE_GC16;
 
         if (!gradient) {
             while (x <= y) {
@@ -114,19 +115,17 @@ namespace widgets {
     }
 
 
-    //TODO: this should really just be a subclass of Button, not a new widget
 //basically a reimplementation of ui::Button with a clickable image instead of text
     class ImageButton : public ui::Button {
     public:
         ImageButton(int x, int y, int w, int h, icons::Icon icon) : Button(x, y, w, h, "") {
             pixmap = make_shared<ui::Pixmap>(x, y, w, h, icon);
+            children.push_back(pixmap);
         }
 
-        void render() override{
-            this->undraw();
-            pixmap->x = x;
-            pixmap->y = y;
-            pixmap->render();
+    void on_reflow() override{
+            pixmap->set_coords(x,y,w,h);
+            pixmap->mark_redraw();
         }
 
     private:
@@ -151,7 +150,7 @@ namespace widgets {
             startColor = 0;
             endColor = 1;
             gradient = true;
-            inset = 10;
+            inset = 0;
             expA = -9.f;
             expB = 1.f;
         }
@@ -214,6 +213,7 @@ RoundCornerStyle style;
         auto dy = sy + h + style.cornerRadius + style.borderThickness + style.inset;
         fb->draw_rect(sx, sy, dx, dy, WHITE, true);
     }
+     
     void render() override {
         fb->waveform_mode = WAVEFORM_MODE_GC16;
         ui::TextInput::render();
@@ -227,18 +227,13 @@ RoundCornerStyle style;
     public:
         SearchBox(int x, int y, int w, int h, RoundCornerStyle style, const string text = "") : RoundedTextInput(x, y, w, h, style, text) {
             pixmap = make_shared<ui::Pixmap>(x + w - h, y, h, h, ICON(assets::png_search_png));
+            children.push_back(pixmap);
         }
 
-        void render() override {
-            RoundedTextInput::undraw();
-            fb->waveform_mode = WAVEFORM_MODE_GC16;
-            pixmap->x = x + w - h;
-            pixmap->y = y;
-            //pixmap->undraw();
-            pixmap->render();
-            RoundedTextInput::render();
+        void on_reflow() override{
+            pixmap->set_coords(x + w - h, y, h, h);
+            pixmap->mark_redraw();
         }
-
     private:
         shared_ptr<ui::Pixmap> pixmap;
     };
@@ -347,6 +342,11 @@ RoundCornerStyle style;
             gradients.push_back(g3);
             gradients.push_back(g4);
             gradients.push_back(g5);
+            children.push_back(g1);
+            children.push_back(g2);
+            children.push_back(g3);
+            children.push_back(g4);
+            children.push_back(g5);
 
             int lineHeight = 100;
             inputA = make_shared<LabeledRangeInput>(x, y, w, lineHeight, "Exp");
@@ -369,17 +369,11 @@ RoundCornerStyle style;
             children.push_back(inputT);
         }
 
-
-        void render() override {
+        void update_values() {
             for (auto &g: gradients) {
-                g->undraw();
                 g->expA = target->style.expA;
                 g->coefB = target->style.expB;
-                g->render();
-                g->render_border();
-            }
-            for (auto &c: children) {
-                c->mark_redraw();
+                g->mark_redraw();
             }
         }
 
@@ -392,48 +386,52 @@ RoundCornerStyle style;
 
         void updateSliderA(float p) {
             target->style.expA = inputA->range->get_value();
-            mark_redraw();
+            update_values();
             target->mark_redraw();
         }
 
         void updateSliderB(float p) {
             target->style.expB = inputB->range->get_value();
-            mark_redraw();
+            update_values();
             target->mark_redraw();
         }
 
         void updateSliderT(float p) {
             target->style.borderThickness = inputT->range->get_value();
-            mark_redraw();
+            update_values();
             target->mark_redraw();
         }
 
         void updateSliderS(float p) {
             target->style.startColor = p;
             inputS->mark_redraw();
-            mark_redraw();
+            update_values();
         }
 
         void updateSliderE(float p) {
             target->style.endColor = p;
             inputEnd->mark_redraw();
-            mark_redraw();
+            update_values();
         }
     };
 
     class ListBox: RoundCornerWidget{
     public:
         int itemHeight;
+        int padding = 10;
         struct ListItem{
             string label;
             void* object;
+        private:
+            shared_ptr<ui::Button> _button = nullptr;
         };
-        vector<shared_ptr<ui::Button>> contents;
+        //please call mark_redraw() on this widget after editing contents
+        vector<ListItem> contents;
         ListBox(int x, int y, int w, int h, int itemHeight) : RoundCornerWidget(x,y,w,h,RoundCornerStyle()){
             this->itemHeight = itemHeight;
         }
 
-        void add(shared_ptr<ui::Button> item){
+        void add(ListItem item){
             contents.push_back(item);
             this->mark_redraw();
         }
@@ -441,6 +439,15 @@ RoundCornerStyle style;
         //void before_render() override{}
 
         void render() override{
+
+        }
+    };
+
+    class ColorTestWidget :ui::Widget{
+    public:
+        void render() override{
+            undraw();
+            //for(float fi = 0.f; fi <=1.f; fi += 0.)
 
         }
     };

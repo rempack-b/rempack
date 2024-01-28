@@ -22,9 +22,9 @@ void Rempack::startApp() {
     //auto t = new ui::Text(0,0,200,50, "hellorld");
     //scene->add(t);
 
-    ui::MainLoop::main();
+    //ui::MainLoop::main();
     ui::MainLoop::refresh();
-    ui::MainLoop::redraw();
+    //ui::MainLoop::redraw();
 
     while(true){
         ui::MainLoop::main();
@@ -36,32 +36,24 @@ void Rempack::startApp() {
 
 }
 
-void add_children_to_scene(ui::Scene scene, ui::Widget *widget){
-    for(auto &c:widget->children){
-        scene->add(c);
-        add_children_to_scene(scene, c.get());
-    }
-}
-
 //1404x1872 - 157x209mm -- 226dpi
 ui::Scene buildHomeScene(int width, int height) {
     auto scene = ui::make_scene();
 
-    auto layout = new ui::VerticalLayout(20, 20, width, height, scene);
-    auto searchPane = new ui::HorizontalLayout(0, 0, width, 100, scene);
+    auto layout = new ui::VerticalReflow(20, 20, width, height, scene);
+    auto searchPane = new ui::HorizontalReflow(0, 0, width, 100, scene);
     layout->pack_start(searchPane);
 
     auto settingButton = new widgets::ConfigButton(0,0,60,60);
     searchPane->pack_start(settingButton);
     auto searchBox = new widgets::SearchBox(0,0,1000,60, widgets::RoundCornerStyle());
     searchPane->pack_center(searchBox);
-    //add_children_to_scene(scene, searchBox);
-    //add_children_to_scene(scene, settingButton);
 
-    auto applicationPane = new ui::HorizontalLayout(0,0,width - 40, height - 400, scene);
-    auto groupPane = new ui::VerticalLayout(0,0,500,800,scene);
+    auto applicationPane = new ui::HorizontalReflow(0,0,width - 40, height - 400, scene);
+    auto groupPane = new ui::VerticalReflow(0,0,500,800,scene);
     applicationPane->pack_start(groupPane);
-
+    auto editor = new widgets::RoundCornerEditor(300,300,800,800,searchBox);
+    applicationPane->pack_start(editor);
 
     return scene;
 }
