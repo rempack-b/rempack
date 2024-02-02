@@ -6,6 +6,7 @@
 #include "rempack.h"
 #include "../assets/icons/icons_embed.h"
 #include "../ui/widgets.h"
+#include "../ui/debug_widgets.h"
 #include "../ui/utils.h"
 #define DEBUG_DRAW
 
@@ -42,7 +43,6 @@ ui::Scene buildHomeScene(int width, int height) {
 
     auto layout = new ui::VerticalReflow(20, 20, width, height, scene);
     auto searchPane = new ui::HorizontalReflow(0, 0, width, 100, scene);
-    layout->pack_start(searchPane);
 
     auto settingButton = new widgets::ConfigButton(0,0,60,60);
     searchPane->pack_start(settingButton);
@@ -50,10 +50,20 @@ ui::Scene buildHomeScene(int width, int height) {
     searchPane->pack_center(searchBox);
 
     auto applicationPane = new ui::HorizontalReflow(0,0,width - 40, height - 400, scene);
-    auto groupPane = new ui::VerticalReflow(0,0,500,800,scene);
-    applicationPane->pack_start(groupPane);
-    auto editor = new widgets::RoundCornerEditor(300,300,800,800,searchBox);
-    applicationPane->pack_start(editor);
+    //auto groupPane = new ui::VerticalReflow(0,0,500,800,scene);
+    //applicationPane->pack_start(groupPane);
+    auto filterPanel = new widgets::ListBox(0,0,500,800,50);
+    filterPanel->add(widgets::ListBox::ListItem("test1"));
+    filterPanel->add(widgets::ListBox::ListItem("test2"));
+    filterPanel->add(widgets::ListBox::ListItem("test3"));
+    filterPanel->add(widgets::ListBox::ListItem("test4"));
+    filterPanel->add(widgets::ListBox::ListItem("test5"));
+
+    layout->pack_start(searchPane);
+    layout->pack_start(applicationPane);
+    applicationPane->pack_start(filterPanel);
+
+    layout->reflow();
 
     return scene;
 }

@@ -7,6 +7,7 @@
 #include <rmkit.h>
 
 #include <utility>
+#include <list>
 
 #include "utils.h"
 
@@ -132,6 +133,7 @@ namespace widgets {
         shared_ptr<ui::Pixmap> pixmap;
     };
 
+    //TODO: style sheets
     struct RoundCornerStyle {
     public:
         int cornerRadius;
@@ -204,6 +206,10 @@ class RoundedTextInput: public ui::TextInput{
 public:
 RoundCornerStyle style;
     RoundedTextInput(int x, int y, int w, int h, RoundCornerStyle style, string text = ""): ui::TextInput(x,y,w,h,std::move(text)){
+        //TODO: this is so bad
+        //TODO: style sheets
+        ui::TextInput::style.valign = ui::Style::MIDDLE;
+        ui::TextInput::style.justify = ui::Style::LEFT;
         this->style = style;
     }
     void undraw() override {
@@ -226,6 +232,7 @@ RoundCornerStyle style;
     class SearchBox : public RoundedTextInput {
     public:
         SearchBox(int x, int y, int w, int h, RoundCornerStyle style, const string text = "") : RoundedTextInput(x, y, w, h, style, text) {
+            //TODO: style sheets
             pixmap = make_shared<ui::Pixmap>(x + w - h, y, h, h, ICON(assets::png_search_png));
             children.push_back(pixmap);
         }
@@ -292,38 +299,151 @@ RoundCornerStyle style;
 //TODO: add pagination controls
 class ListBox: public RoundCornerWidget{
     public:
-        int itemHeight;
-        int padding = 10;
         struct ListItem{
-            string label;
-            void* object;
+            friend class ListBox;
+            explicit ListItem(string label):label(std::move(label)){};          //label
+            string label;                                   //the text displayed in the listbox. May only be one line.
+            shared_ptr<void> object = nullptr;              //an optional pointer to any data you want to keep a reference to
+
+            //all items must be unique. This sucks, but we'll implement it if someone needs it
+            inline bool operator==(const ListItem& other)const{
+                return this->label == other.label;
+            }
         private:
-            shared_ptr<ui::Button> _button = nullptr;
+            shared_ptr<ui::Text> _widget = nullptr;
+            bool _selected = false;
         };
-        //please call mark_redraw() on this widget after editing contents
-        vector<ListItem> contents;
+
+    //TODO: style sheets
+        int itemHeight;
+        int padding = 5;
+
+        int offset = 0; //start rendering the list at the nth element
+        bool multiSelect = true; //allow selecting more than one entry
+
+        int pageSize(){
+            return h / (itemHeight + padding);
+        }
+        int currentPage(){
+            return ceil(offset/pageSize());
+        }
+
+        //please call mark_redraw() on this widget after editing contents or selections
+        vector<shared_ptr<ListItem>> contents;
+        std::list<shared_ptr<ListItem>> selectedItems;
+
+
         ListBox(int x, int y, int w, int h, int itemHeight) : RoundCornerWidget(x,y,w,h,RoundCornerStyle()){
             this->itemHeight = itemHeight;
         }
 
         void add(ListItem item){
-            contents.push_back(item);
+            item._widget = make_shared<ui::Text>(x,y,w,itemHeight,item.label);
+            //TODO: style sheets
+            item._widget->style.valign = ui::Style::MIDDLE;
+            contents.push_back(make_shared<ListItem>(item));
             this->mark_redraw();
         }
 
-        //void before_render() override{}
-
-        void render() override{
-
+        void removeAt(int index){
+            auto item = contents[index];
+            auto w = item->_widget;
+            contents.erase(contents.begin() + index);
+            mark_redraw();
         }
-    };
 
-    class ColorTestWidget :ui::Widget{
-    public:
+        void on_reflow() override{
+            mark_redraw();
+        }
+
+        void refresh_list(){
+            auto count = std::min((int)pageSize(), (int)contents.size() - offset);
+            auto cit = _currentView.begin();
+            for(int i = offset; i < offset + count; i++){
+                if(cit == _currentView.end()){
+                    _currentView.push_back(contents[i]);
+                    cit = _currentView.end();
+                    continue;
+                }
+                auto citem = *cit;
+                if(citem == contents[i]) {
+                    cit++;
+                    continue;
+                }
+                (*cit) = contents[i];
+                cit++;
+            }
+            if(cit != _currentView.end()){ //there are more elements in the view than are available for the current page
+                for(auto cbt = cit; cbt != _currentView.end(); cbt++)
+                    (*cbt)->_widget->undraw();
+                _currentView.erase(cit, _currentView.end());
+            }
+        }
+
+        void undraw() override{
+            fb->draw_rect(this->x,this->y,this->w,this->h,WHITE,true);
+            RoundCornerWidget::undraw();
+        }
+
         void render() override{
             undraw();
-            //for(float fi = 0.f; fi <=1.f; fi += 0.)
+            refresh_list();
+            int sx = this->x + padding;
+            int sy = this->y + padding;
+            for(auto item : _currentView) {
+                auto wi = item->_widget;
+                wi->x = sx;
+                wi->y = sy;
+                wi->h = itemHeight;
+                wi->w = w - padding - padding;
+                wi->on_reflow();
+                if(item->_selected){
+                    //TODO: style sheets
+                    //item is selected, draw an effect
+                    //I can't be bothered to make this configurable right now
+                    fb->draw_rect(wi->x, wi->y, wi->w, wi->h, color::GRAY_9, true);
+                }
+                wi->render();
+                sy += itemHeight + padding;
+            }
+        }
 
+        void selectIndex(int index){
+            if((offset + index) >= contents.size() || (offset + index) < 0){
+                fprintf(stderr, "selectIndex out of bounds: idx[%d]\n", index);
+                return;
+            }
+            auto item = contents[offset + index];
+            if(item->_selected){
+                selectedItems.remove_if([item](auto i){return item==i;});
+                item->_selected = false;
+            }
+            else {
+                item->_selected = true;
+                selectedItems.push_back(item);
+            }
+        }
+
+        //check the Y position relative to top of widget, divide by itemHeight
+        void on_mouse_click(input::SynMotionEvent &ev) override{
+            std::cout<<"CLICK"<<std::endl;
+            auto hgt = itemHeight + padding;
+            auto sy = ev.y - this->y;
+            auto shgt = sy/hgt;
+            int idx = floor(shgt);
+            //printf("Click at %d,%d: computed offset %d: displayed %d\n", ev.x, ev.y, idx, displayed_items());
+            std::cout<<std::endl;
+            if(idx > displayed_items())
+                return;
+            selectIndex(idx);
+            mark_redraw();
+        }
+
+    private:
+        std::list<shared_ptr<ListItem>> _currentView;
+        std::list<shared_ptr<ListItem>> _lastView;
+        int displayed_items(){
+            return std::min((int)pageSize(), (int)contents.size() - offset);
         }
     };
 }
