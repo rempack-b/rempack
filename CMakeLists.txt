@@ -58,16 +58,23 @@ include_directories("${CMAKE_SOURCE_DIR}/include")
 include_directories("${CMAKE_SOURCE_DIR}/assets")
 include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/extern")
 
+find_package(ZLIB)
+
 add_executable(${PROJECT_NAME} src/main.cpp
         src/rempack.cpp
         "$<IF:$<BOOL:${RMKIT_EXTERN}>,${RMKIT_FILE},extern/rmkit.h>"
         #${RMKIT_FILE}
         assets/icons/icons_embed.h
+        ui/debug_widgets.h
+        opkg/opkg.h
+        opkg/opkg.cpp
 )
 target_compile_options(${PROJECT_NAME}
-        PUBLIC $<$<CONFIG:Debug>:-O0 -g -Wall -Wno-unused-variable>
+        PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
         PUBLIC $<$<CONFIG:Release>:-O3>
 )
+target_link_options(${PROJECT_NAME}
+        PUBLIC -lz)
 #these can also be done as #define statements, but they MUST appear before rmkit.h
 #all these defines are necessary to build successfully
 #they're here for convenience (you can never forget them) and also to ensure
@@ -84,6 +91,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<STREQUAL:${TARGET_PLATFORM},x86>:FONT_EMBED_H="font_embed.h">
         )
 #see also: rm-toolchain.cmake
+
+target_link_libraries(${PROJECT_NAME} ZLIB::ZLIB)
 
 #add_library(rmkit ${RMKIT_FILE})
 #set_target_properties(rmkit PROPERTIES LINKER_LANGUAGE CXX)

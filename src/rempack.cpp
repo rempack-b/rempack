@@ -7,7 +7,8 @@
 #include "../assets/icons/icons_embed.h"
 #include "../ui/widgets.h"
 #include "../ui/debug_widgets.h"
-#include "../ui/utils.h"
+#include "utils.h"
+#include "../opkg/opkg.h"
 #define DEBUG_DRAW
 
 ui::Scene buildHomeScene(int width, int height);
@@ -37,6 +38,7 @@ void Rempack::startApp() {
 
 }
 
+opkg pkg;
 //1404x1872 - 157x209mm -- 226dpi
 ui::Scene buildHomeScene(int width, int height) {
     auto scene = ui::make_scene();
@@ -53,11 +55,12 @@ ui::Scene buildHomeScene(int width, int height) {
     //auto groupPane = new ui::VerticalReflow(0,0,500,800,scene);
     //applicationPane->pack_start(groupPane);
     auto filterPanel = new widgets::ListBox(0,0,500,800,50);
-    filterPanel->add(widgets::ListBox::ListItem("test1"));
-    filterPanel->add(widgets::ListBox::ListItem("test2"));
-    filterPanel->add(widgets::ListBox::ListItem("test3"));
-    filterPanel->add(widgets::ListBox::ListItem("test4"));
-    filterPanel->add(widgets::ListBox::ListItem("test5"));
+    std::vector<std::string> sections;
+    pkg.InitializeRepositories();
+    pkg.LoadSections(&sections);
+    std::sort(sections.begin(), sections.end());
+    for(const auto& s : sections)
+        filterPanel->add(widgets::ListBox::ListItem(s));
 
     layout->pack_start(searchPane);
     layout->pack_start(applicationPane);

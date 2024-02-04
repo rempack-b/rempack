@@ -28,8 +28,7 @@
       "toolchainFile": "rm-toolchain.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "TARGET_PLATFORM": "rm",
-        "DCMAKE_CXX_COMPILER_LAUNCHER": "ccache"
+        "TARGET_PLATFORM": "rm"
       }
     },
     {
