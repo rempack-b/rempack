@@ -11,6 +11,7 @@
 #include "utils.h"
 #include <functional>
 #include <any>
+#include "text_helpers.h"
 
 namespace widgets {
     /*
@@ -167,6 +168,8 @@ namespace widgets {
         };
         RoundCornerStyle style;
             uint16_t undraw_color = WHITE;
+
+            //TODO: this still isn't quite right
         void undraw() override {
             //top
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
@@ -288,10 +291,8 @@ shared_ptr<RoundCornerWidget> border;
         shared_ptr<ui::Text> label = nullptr;
     };
 
-
-
-//TODO: add pagination controls
-class ListBox: public RoundCornerWidget{
+    //TODO: add pagination controls
+    class ListBox: public RoundCornerWidget{
     public:
         struct ListItem{
             friend class ListBox;
@@ -307,7 +308,6 @@ class ListBox: public RoundCornerWidget{
         private:
             shared_ptr<ui::Text> _widget = nullptr;
             bool _selected = false;
-            int index = -1;
         };
 
     PLS_DEFINE_SIGNAL(LISTBOX_EVENT, const shared_ptr<ListItem>);
@@ -323,7 +323,7 @@ class ListBox: public RoundCornerWidget{
 
     std::function<bool(const shared_ptr<ListItem>&)> filterPredicate = dummy_filter;
 
-    //TODO: style sheets
+        //TODO: style sheets
         int itemHeight;
         int padding = 5;
 
@@ -354,11 +354,9 @@ class ListBox: public RoundCornerWidget{
             item->_widget->style.justify = ui::Style::LEFT;
             contents.push_back(item);
             events.added(item);
-            update_indices();
             this->mark_redraw();
         }
 
-        //TODO: need to iterate through contents and ensure indicies are up to date
         bool remove(string label){
             //sure, you could use std::find but C++ Lambdas are an affront to all that is good in this world
             int i = 0;
@@ -374,7 +372,6 @@ class ListBox: public RoundCornerWidget{
             if(item != nullptr){
                 contents.erase(contents.begin() + i);
                 events.removed(item);
-                update_indices();
                 mark_redraw();
                 return true;
             }
@@ -386,11 +383,19 @@ class ListBox: public RoundCornerWidget{
             auto w = item->_widget;
             contents.erase(contents.begin() + index);
             events.removed(item);
-            update_indices();
             mark_redraw();
         }
 
+        void trim_texts(){
+            for(const auto &it : contents){
+                auto wd = it->_widget;
+                wd->text = utils::clip_string(it->label, wd->w, wd->h, ui::Widget::style.font_size);
+                wd->mark_redraw();
+            }
+        }
+
         void on_reflow() override{
+            trim_texts();
             mark_redraw();
         }
 
@@ -495,7 +500,7 @@ class ListBox: public RoundCornerWidget{
             auto shgt = sy/hgt;
             int idx = floor(shgt);
             //printf("Click at %d,%d: computed offset %d: displayed %d\n", ev.x, ev.y, idx, displayed_items());
-            std::cout<<std::endl;
+            //std::cout<<std::endl;
             if(idx > displayed_items())
                 return;
             selectIndex(idx);
@@ -506,16 +511,11 @@ class ListBox: public RoundCornerWidget{
         std::vector<shared_ptr<ListItem>> _currentView;
         std::vector<shared_ptr<ListItem>> _sortedView;
         int displayed_items(){
-            return std::min((int)pageSize(), (int)contents.size() - offset);
+            return min((int)pageSize(), (int)contents.size() - offset);
         }
-        void update_indices(){
-            for(int i = 0; i < contents.size(); i++)
-                contents[i]->index = i;
-        }
-private:
-    static bool dummy_filter(shared_ptr<ListItem> it){
+    private:
+        static bool dummy_filter(shared_ptr<ListItem> it){
             return true;
         }
     };
-
 }
