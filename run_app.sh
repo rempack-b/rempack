@@ -6,7 +6,7 @@
 REMARKABLE_HOST="remarkable"
 APP_PATH=${1}
 APP=$(basename "${APP_PATH}")
-BASE_DIR="/home/root"
+BASE_DIR="/home/root/${APP}"
 RM_USER="root"
 
 function kill_remote_app() {
@@ -15,7 +15,7 @@ function kill_remote_app() {
 
 function cleanup() {
   kill_remote_app
-  ssh ${RM_USER}@${REMARKABLE_HOST} rm ${BASE_DIR}/${APP}
+  #ssh ${RM_USER}@${REMARKABLE_HOST} rm ${BASE_DIR}/${APP}
   ssh ${RM_USER}@${REMARKABLE_HOST} systemctl restart remux
   echo "FINISHED"
   trap - EXIT
@@ -26,6 +26,7 @@ trap cleanup EXIT
 trap cleanup SIGINT
 
 #this is probably brittle, I'm sure it's fine
+ssh ${RM_USER}@${REMARKABLE_HOST} mkdir -p ${BASE_DIR}
 scp ${APP_PATH} ${RM_USER}@${REMARKABLE_HOST}:${BASE_DIR}/${APP}
 kill_remote_app
 echo "RUNNING ${APP}"

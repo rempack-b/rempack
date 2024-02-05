@@ -6,6 +6,9 @@ This is targeted specifically at the ReMarkable 2, but it will likely compile fi
 
 The goal is to create a package manager that is as featureful as possible for the RM2.
 
+## Warning!
+
+This project uses a custom fork of rmkit. You'll need to pull down and build that fork, then either copy rmkit.h into the `extern` folder, or make a hard link to it. The changes in my rmkit fork will be upstreamed Eventually(tm)
 
 ### What is this?
 

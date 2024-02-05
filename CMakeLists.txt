@@ -68,6 +68,7 @@ add_executable(${PROJECT_NAME} src/main.cpp
         ui/debug_widgets.h
         opkg/opkg.h
         opkg/opkg.cpp
+        ui/rempack_widgets.h
 )
 target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
