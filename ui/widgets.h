@@ -201,6 +201,21 @@ namespace widgets {
         }
     };
 
+    class RoundImageButton : public ImageButton{
+    public:
+
+        shared_ptr<RoundCornerWidget> border;
+        RoundImageButton(int x, int y, int w, int h, icons::Icon icon, RoundCornerStyle style): ImageButton(x,y,w,h,icon){
+            border = make_shared<RoundCornerWidget>(x,y,w,h,style);
+            children.push_back(border);
+        }
+        void on_reflow()override{
+            border->set_coords(x,y,w,h);
+            border->mark_redraw();
+            ImageButton::on_reflow();
+        }
+    };
+
     //same as ui::TextInput except it draws fancy rounded corners
 class RoundedTextInput: public ui::TextInput{
 public:
@@ -229,38 +244,6 @@ RoundCornerStyle style;
     }
 };
 
-    class SearchBox : public RoundedTextInput {
-    public:
-        SearchBox(int x, int y, int w, int h, RoundCornerStyle style, const string text = "") : RoundedTextInput(x, y, w, h, style, text) {
-            //TODO: style sheets
-            pixmap = make_shared<ui::Pixmap>(x + w - h, y, h, h, ICON(assets::png_search_png));
-            children.push_back(pixmap);
-        }
-
-        void on_reflow() override{
-            pixmap->set_coords(x + w - h, y, h, h);
-            pixmap->mark_redraw();
-        }
-    private:
-        shared_ptr<ui::Pixmap> pixmap;
-    };
-
-    class ConfigButton : public ImageButton {
-    public:
-        RoundCornerStyle style;
-
-        ConfigButton(int x, int y, int w, int h) : ImageButton(x, y, w, h, ICON(assets::png_menu_png)) {
-            style = RoundCornerStyle();
-        }
-
-        void render() override {
-            fb->waveform_mode = WAVEFORM_MODE_GC16;
-            ImageButton::render();
-            drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.borderThickness,
-                           style.startColor, style.inset, style.gradient, style.endColor,
-                           style.expA, style.expB);
-        }
-    };
    class LabeledRangeInput : public ui::Widget {
     public:
         enum LabelPosition {
