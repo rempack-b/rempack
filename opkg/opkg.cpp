@@ -18,22 +18,7 @@
 
 namespace fs = std::filesystem;
 using namespace std;
-struct package{
-  string Package;
-  string Description;
-  string Homepage;
-  string Version;
-  string Section;
-  string Maintainer;
-  string License;
-  string Architecture;
-  string Filename;
-  string SHA256sum;
-  uint Size;
-  string Repo;
-  string _depends_str;
-  vector<package*> Depends;
-};
+
 /*
  * Package: toltec-base
  * Description: Metapackage defining the base set of packages in a Toltec install
@@ -49,7 +34,6 @@ struct package{
  * Size: 2122
  */
 
-map<string, package*> packages;
 const fs::path OPKG_DB{"/opt/var/opkg-lists"};
 
 void opkg::LoadSections(std::vector<std::string> *categories, bool skipEntware) {
@@ -64,12 +48,35 @@ void opkg::LoadSections(std::vector<std::string> *categories, bool skipEntware) 
     }
 }
 
+void opkg::LoadPackages(std::vector<std::string> *dest, bool skipEntware) {
+    for (const auto& [n, pk]: packages) {
+        if(skipEntware && pk->Repo == "entware")
+            continue;
+        dest->emplace_back(pk->Package);
+    }
+}
+
+std::vector<std::string> split(const std::string &s, const char delimiter)
+{
+    std::vector<std::string> splits;
+    std::string _split;
+    std::istringstream ss(s);
+    while (getline(ss, _split, delimiter))
+    {
+        if(_split[0] == ' ')
+            _split.erase(0,1);
+        splits.push_back(_split);
+    }
+    return splits;
+}
+
+
 //after all packages are parsed, just roll through the list once to link dependent packages
-void link_dependencies(){
+void opkg::link_dependencies(){
     for(const auto &[n, pkg] : packages){
         if(pkg->_depends_str.empty())
             continue;
-        auto splits = utils::split(pkg->_depends_str, ',');
+        auto splits = split(pkg->_depends_str, ',');
         if(splits.empty()){
             printf("Failed to parse dependency list for package %s. Dependencies: %s\n", pkg->Package.c_str(), pkg->_depends_str.c_str());
         }
@@ -79,7 +86,7 @@ void link_dependencies(){
             {
                 //dependency may have a version in the string: Failed to resolve dependency tarnish (= 2.6-3) for package oxide-utils
                 //strip the version here and try again. This seems to catch everything
-                auto dsplit = utils::split(s, ' ');
+                auto dsplit = split(s, ' ');
                 if(!dsplit.empty()){
                     it = packages.find(dsplit[0]);
                     if(it != packages.cend()){
@@ -117,6 +124,7 @@ inline bool try_parse_uint(const char *prefix, const char *line, uint &field) {
     }
 }
 
+//this is mostly copied from opkg's own parser. I don't hate it?
 bool parse_line(package *ptr, const char *line) {
     if (ptr == nullptr)
         return false;
@@ -154,7 +162,7 @@ bool parse_line(package *ptr, const char *line) {
         case 'S':{
             if(try_parse_str("Section", line, ptr->Section))
                 break;
-            if(try_parse_str("SHA256Sum", line, ptr->SHA256sum))
+            if(try_parse_str("SHA256sum", line, ptr->SHA256sum))
                 break;
             if(try_parse_uint("Size", line, ptr->Size))
                 break;
@@ -184,22 +192,22 @@ bool parse_line(package *ptr, const char *line) {
 void opkg::InitializeRepositories() {
     packages.clear();
     int pc = 0;
-    for(const auto &f : fs::directory_iterator(OPKG_DB)){
+    for (const auto &f: fs::directory_iterator(OPKG_DB)) {
         printf("extracting archive %s\n", f.path().c_str());
         auto gzf = gzopen(f.path().c_str(), "rb");
         char cbuf[4096]{};
         auto *pk = new package;
         int count = 0;
-        while(gzgets(gzf, cbuf, sizeof(cbuf)) != nullptr){
+        while (gzgets(gzf, cbuf, sizeof(cbuf)) != nullptr) {
             count++;
-            if(!parse_line(pk, cbuf)){
-                if(pk->Package.empty())
+            if (!parse_line(pk, cbuf)) {
+                if (pk->Package.empty())
                     continue;
 
                 pk->Repo = f.path().filename();
                 pc++;
                 auto mp = packages.emplace(pk->Package, pk);
-                if(!mp.second) {
+                if (!mp.second) {
                     printf("emplacement failed for package %d: %s\n", pc, pk->Package.c_str());
 
                 }
@@ -213,4 +221,23 @@ void opkg::InitializeRepositories() {
     printf("Parsed %d packages\n", pc);
     printf("Processed %d packages\n", packages.size());
     link_dependencies();
+
+    auto pk0 = packages.find("harmony")->second;
+    printf("Dumping first package:\n"
+           "\tPackage: %s\n"
+           "\tDescription: %s\n"
+           "\tHomepage: %s\n"
+           "\tVersion: %s\n"
+           "\tSection: %s\n"
+           "\tMaintainer: %s\n"
+           "\tLicense: %s\n"
+           "\tArchitecture: %s\n"
+           "\tFilename: %s\n"
+           "\tSHASum: %s\n"
+           "\tSize: %d\n"
+           "\tRepo: %s\n"
+           "\tDepends: %s\n\n",
+           pk0->Package.c_str(), pk0->Description.c_str(), pk0->Homepage.c_str(), pk0->Version.c_str(),
+           pk0->Section.c_str(), pk0->Maintainer.c_str(), pk0->License.c_str(), pk0->Architecture.c_str(),
+           pk0->Filename.c_str(), pk0->SHA256sum.c_str(), pk0->Size, pk0->Repo.c_str(), pk0->_depends_str.c_str());
 }
