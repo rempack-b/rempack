@@ -10,22 +10,8 @@
 #include <vector>
 
 namespace utils{
-    inline float sigmoid(float t, float a = -12, float b = 6){
+    inline float sigmoid(float t, float a, float b){
         return 1 / (1 + std::exp(a * t + b));
-    }
-
-    std::vector<std::string> split(const std::string &s, const char delimiter)
-    {
-        std::vector<std::string> splits;
-        std::string split;
-        std::istringstream ss(s);
-        while (getline(ss, split, delimiter))
-        {
-            if(split[0] == ' ')
-                split.erase(0,1);
-            splits.push_back(split);
-        }
-        return splits;
     }
 
     // trim from start (in place)

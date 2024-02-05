@@ -5,11 +5,12 @@
 #pragma once
 
 #include <rmkit.h>
-
-#include <utility>
 #include <list>
-
+#include <utility>
+#include "../assets/icons/icons_embed.h"
 #include "utils.h"
+#include <functional>
+#include <any>
 
 namespace widgets {
     /*
@@ -152,7 +153,7 @@ namespace widgets {
             startColor = 0;
             endColor = 1;
             gradient = true;
-            inset = 0;
+            inset = 8;
             expA = -9.f;
             expB = 1.f;
         }
@@ -165,32 +166,32 @@ namespace widgets {
             this->style = style;
         };
         RoundCornerStyle style;
-
+            uint16_t undraw_color = WHITE;
         void undraw() override {
             //top
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
                           y + style.inset - style.cornerRadius - style.borderThickness,
-                          x + w - style.inset + style.cornerRadius + style.borderThickness,
+                          w - style.inset + style.cornerRadius + style.borderThickness,
                           style.borderThickness,
-                          WHITE, true);
+                          undraw_color, true);
             //bottom
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
                           y + h - style.inset + style.cornerRadius,
-                          x + w - style.inset + style.cornerRadius + style.borderThickness,
+                          w - style.inset + style.cornerRadius + style.borderThickness,
                           style.borderThickness,
-                          WHITE, true);
+                          undraw_color, true);
             //left
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
                           y + style.inset - style.cornerRadius - style.borderThickness,
                           style.borderThickness,
-                          y + h - style.inset + style.cornerRadius + style.borderThickness,
-                          WHITE, true);
+                          h - style.inset + style.cornerRadius + style.borderThickness,
+                          undraw_color, true);
             //right
             fb->draw_rect(x + w - style.inset + style.cornerRadius,
                           y + style.inset - style.cornerRadius - style.borderThickness,
                           style.borderThickness,
-                          y + h - style.inset + style.cornerRadius + style.borderThickness,
-                          WHITE, true);
+                          h - style.inset + style.cornerRadius + style.borderThickness,
+                          undraw_color, true);
         }
 
         void render_border() override {
@@ -220,12 +221,15 @@ namespace widgets {
 class RoundedTextInput: public ui::TextInput{
 public:
 RoundCornerStyle style;
+shared_ptr<RoundCornerWidget> border;
     RoundedTextInput(int x, int y, int w, int h, RoundCornerStyle style, string text = ""): ui::TextInput(x,y,w,h,std::move(text)){
         //TODO: this is so bad
         //TODO: style sheets
         ui::TextInput::style.valign = ui::Style::MIDDLE;
         ui::TextInput::style.justify = ui::Style::LEFT;
         this->style = style;
+        border = make_shared<RoundCornerWidget>(x,y,w,h,style);
+        children.push_back(border);
     }
     void undraw() override {
         auto sx = x - style.cornerRadius - style.borderThickness + style.inset;
@@ -238,9 +242,16 @@ RoundCornerStyle style;
     void render() override {
         fb->waveform_mode = WAVEFORM_MODE_GC16;
         ui::TextInput::render();
-        drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.borderThickness,
-                       style.startColor, style.inset, style.gradient, style.endColor,
-                       style.expA, style.expB);
+    }
+
+    void on_reflow()override{
+        border->set_coords(x,y,w,h);
+        border->mark_redraw();
+    }
+
+    void render_border() override{
+        border->style = style;
+        //stop parent class from rendering its border
     }
 };
 
@@ -285,8 +296,9 @@ class ListBox: public RoundCornerWidget{
         struct ListItem{
             friend class ListBox;
             explicit ListItem(string label):label(std::move(label)){};          //label
+            explicit ListItem(string label, std::any object):label(std::move(label)),object(std::move(object)){};
             string label;                                   //the text displayed in the listbox. May only be one line.
-            shared_ptr<void> object = nullptr;              //an optional pointer to any data you want to keep a reference to
+            std::any object;             //an optional pointer to any data you want to keep a reference to
 
             //all items must be unique. This sucks, but we'll implement it if someone needs it
             inline bool operator==(const ListItem& other)const{
@@ -295,7 +307,21 @@ class ListBox: public RoundCornerWidget{
         private:
             shared_ptr<ui::Text> _widget = nullptr;
             bool _selected = false;
+            int index = -1;
         };
+
+    PLS_DEFINE_SIGNAL(LISTBOX_EVENT, const shared_ptr<ListItem>);
+    class LISTBOX_EVENTS{
+    public:
+        LISTBOX_EVENT selected;
+        LISTBOX_EVENT deselected;
+        LISTBOX_EVENT added;
+        LISTBOX_EVENT removed;
+    };
+
+    LISTBOX_EVENTS events;
+
+    std::function<bool(const shared_ptr<ListItem>&)> filterPredicate = dummy_filter;
 
     //TODO: style sheets
         int itemHeight;
@@ -313,25 +339,54 @@ class ListBox: public RoundCornerWidget{
 
         //please call mark_redraw() on this widget after editing contents or selections
         vector<shared_ptr<ListItem>> contents;
-        std::list<shared_ptr<ListItem>> selectedItems;
-
+        std::unordered_set<shared_ptr<ListItem>> selectedItems;
 
         ListBox(int x, int y, int w, int h, int itemHeight) : RoundCornerWidget(x,y,w,h,RoundCornerStyle()){
             this->itemHeight = itemHeight;
         }
 
-        void add(ListItem item){
-            item._widget = make_shared<ui::Text>(x,y,w,itemHeight,item.label);
+        //TODO: add backing index to item as we add it
+        void add(string label, std::any object = nullptr){
+            auto item = make_shared<ListItem>(label, object);
+            item->_widget = make_shared<ui::Text>(x,y,w,itemHeight,label);
             //TODO: style sheets
-            item._widget->style.valign = ui::Style::MIDDLE;
-            contents.push_back(make_shared<ListItem>(item));
+            item->_widget->style.valign = ui::Style::MIDDLE;
+            item->_widget->style.justify = ui::Style::LEFT;
+            contents.push_back(item);
+            events.added(item);
+            update_indices();
             this->mark_redraw();
+        }
+
+        //TODO: need to iterate through contents and ensure indicies are up to date
+        bool remove(string label){
+            //sure, you could use std::find but C++ Lambdas are an affront to all that is good in this world
+            int i = 0;
+            shared_ptr<ListItem> item = nullptr;
+            for(; i <contents.size(); i++)
+            {
+                auto ti = contents[i];
+                if(label == ti->label) {
+                    item = ti;
+                    break;
+                }
+            }
+            if(item != nullptr){
+                contents.erase(contents.begin() + i);
+                events.removed(item);
+                update_indices();
+                mark_redraw();
+                return true;
+            }
+            return false;
         }
 
         void removeAt(int index){
             auto item = contents[index];
             auto w = item->_widget;
             contents.erase(contents.begin() + index);
+            events.removed(item);
+            update_indices();
             mark_redraw();
         }
 
@@ -339,21 +394,36 @@ class ListBox: public RoundCornerWidget{
             mark_redraw();
         }
 
-        void refresh_list(){
-            auto count = std::min((int)pageSize(), (int)contents.size() - offset);
+        //first, filter contents with our predicate and copy to current view
+        //second, sort current view
+        virtual void refresh_list(){
+            int si = 0;
+            for(auto & item : contents){
+                if(filterPredicate(item)) {
+                    if(si >= _sortedView.size())
+                        _sortedView.push_back(item);
+                    else
+                        _sortedView[si] = item;
+                    si++;
+                }
+            }
+            _sortedView.erase(_sortedView.begin() + si, _sortedView.end());
+            std::sort(_sortedView.begin(), _sortedView.end());
+
+            auto count = std::min((int)pageSize(), (int)_sortedView.size() - offset);
             auto cit = _currentView.begin();
             for(int i = offset; i < offset + count; i++){
                 if(cit == _currentView.end()){
-                    _currentView.push_back(contents[i]);
+                    _currentView.push_back(_sortedView[i]);
                     cit = _currentView.end();
                     continue;
                 }
                 auto citem = *cit;
-                if(citem == contents[i]) {
+                if(citem == _sortedView[i]) {
                     cit++;
                     continue;
                 }
-                (*cit) = contents[i];
+                (*cit) = _sortedView[i];
                 cit++;
             }
             if(cit != _currentView.end()){ //there are more elements in the view than are available for the current page
@@ -389,27 +459,37 @@ class ListBox: public RoundCornerWidget{
                 wi->render();
                 sy += itemHeight + padding;
             }
+            fb->waveform_mode = WAVEFORM_MODE_GC16;
         }
 
-        void selectIndex(int index){
-            if((offset + index) >= contents.size() || (offset + index) < 0){
+        void selectIndex(int index) {
+            if(index >= _currentView.size()) {
                 fprintf(stderr, "selectIndex out of bounds: idx[%d]\n", index);
                 return;
             }
-            auto item = contents[offset + index];
-            if(item->_selected){
-                selectedItems.remove_if([item](auto i){return item==i;});
+            auto item = _currentView[index];
+            if (item->_selected) {
+                selectedItems.erase(item);
                 item->_selected = false;
-            }
-            else {
+                events.deselected(item);
+            } else {
                 item->_selected = true;
-                selectedItems.push_back(item);
+                if(multiSelect)
+                    selectedItems.emplace(item);
+                else{
+                    for(const auto& si : selectedItems){
+                        si->_selected = false;
+                        events.deselected(si);
+                    }
+                    selectedItems.clear();
+                    selectedItems.emplace(item);
+                }
+                events.selected(item);
             }
         }
 
         //check the Y position relative to top of widget, divide by itemHeight
         void on_mouse_click(input::SynMotionEvent &ev) override{
-            std::cout<<"CLICK"<<std::endl;
             auto hgt = itemHeight + padding;
             auto sy = ev.y - this->y;
             auto shgt = sy/hgt;
@@ -422,11 +502,20 @@ class ListBox: public RoundCornerWidget{
             mark_redraw();
         }
 
-    private:
-        std::list<shared_ptr<ListItem>> _currentView;
-        std::list<shared_ptr<ListItem>> _lastView;
+    protected:
+        std::vector<shared_ptr<ListItem>> _currentView;
+        std::vector<shared_ptr<ListItem>> _sortedView;
         int displayed_items(){
             return std::min((int)pageSize(), (int)contents.size() - offset);
         }
+        void update_indices(){
+            for(int i = 0; i < contents.size(); i++)
+                contents[i]->index = i;
+        }
+private:
+    static bool dummy_filter(shared_ptr<ListItem> it){
+            return true;
+        }
     };
+
 }
