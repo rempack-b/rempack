@@ -47,15 +47,25 @@ namespace widgets{
 
     };
 
+    //buttons: (re)install, uninstall, download, (preview image)
     class PackageInfoPanel: public RoundCornerWidget{
     public:
+        int padding = 5;
+        int controlHeight = 40;
+        int controlWidth = 200;
         PackageInfoPanel(int x, int y, int w, int h, RoundCornerStyle style) : RoundCornerWidget(x,y,w,h,style){
             _text = make_shared<ui::MultiText>(x,y,w,h,"");
+            _text->set_coords(x+padding,y+padding,w-(2*padding),h-(2*padding));
             children.push_back(_text);
+            _installBtn = make_shared<EventButton>(x,y,200, controlHeight,"Install");
+            _removeBtn = make_shared<EventButton>(x,y,200, controlHeight,"Uninstall");
+            _downloadBtn = make_shared<EventButton>(x,y,200, controlHeight,"Download");
+            _previewBtn = make_shared<EventButton>(x,y,200, controlHeight,"Preview");
+            layout_buttons();
         }
 
         void on_reflow() override{
-            _text->set_coords(x,y,w,h);
+            _text->set_coords(x+padding,y+padding,w-(2*padding),h-(2*padding));
             _text->mark_redraw();
         }
 
@@ -67,5 +77,12 @@ namespace widgets{
         }
     private:
         shared_ptr<ui::MultiText> _text;
+        shared_ptr<EventButton> _installBtn, _removeBtn, _downloadBtn, _previewBtn;
+
+        void layout_buttons(){
+            auto dx = x + padding;
+            auto dy = y + h - padding - controlHeight;
+            _installBtn->set_coords(dx,dy,controlWidth,controlHeight);
+        }
     };
 }

@@ -117,22 +117,76 @@ namespace widgets {
         }
     }
 
+class EventButton : public ui::Button{
+    public:
+    EventButton(int x, int y, int w, int h, string text = "") : Button(x, y, w, h, ""){}
+
+    PLS_DEFINE_SIGNAL(BUTTON_EVENT, void*);
+
+    class BUTTON_EVENTS {
+    public:
+        BUTTON_EVENT clicked;
+    };
+
+    BUTTON_EVENTS events;
+    void on_mouse_click(input::SynMotionEvent &ev) override {
+        ev.stop_propagation();
+        events.clicked();
+        mark_redraw();
+    }
+
+};
 
 //basically a reimplementation of ui::Button with a clickable image instead of text
-    class ImageButton : public ui::Button {
+    class ImageButton : public EventButton {
     public:
-        ImageButton(int x, int y, int w, int h, icons::Icon icon) : Button(x, y, w, h, "") {
+        ImageButton(int x, int y, int w, int h, icons::Icon icon) : EventButton(x, y, w, h, "") {
             pixmap = make_shared<ui::Pixmap>(x, y, w, h, icon);
-            children.push_back(pixmap);
+            //children.push_back(pixmap);
         }
 
-    void on_reflow() override{
-            pixmap->set_coords(x,y,w,h);
+
+        void render() override{
+            fb->waveform_mode = WAVEFORM_MODE_GC16;
+            if(!enabled) {
+                fb->draw_rect(x, y, w, h, color::GRAY_12, true, 0.5f);
+            }
+            pixmap->render();
+            //fb->draw_rect(x,y,w,h,BLACK,false);
+        }
+
+        void on_reflow() override {
+            //pixmap->undraw();
+            auto dw = min(w,h);
+            auto dx = x+(w/2) - (dw/2);
+            pixmap->set_coords(dx, y, dw, dw);
+            pixmap->icon.width  = dw;
+            pixmap->icon.height = dw;
+            util::resize_image(pixmap->icon.image, dw, dw, 20);
+            pixmap->on_reflow();
             pixmap->mark_redraw();
+        }
+
+        void on_mouse_click(input::SynMotionEvent &ev) override {
+            ev.stop_propagation();
+            if(!enabled)
+                return;
+            EventButton::on_mouse_click(ev);
+        }
+
+        void disable() {
+            enabled = false;
+            mark_redraw();
+        }
+
+        void enable() {
+            enabled = true;
+            mark_redraw();
         }
 
     private:
         shared_ptr<ui::Pixmap> pixmap;
+        bool enabled = true;
     };
 
     //TODO: style sheets

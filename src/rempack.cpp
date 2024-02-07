@@ -9,6 +9,7 @@
 #include "../ui/debug_widgets.h"
 #include "../ui/rempack_widgets.h"
 #include "../opkg/opkg.h"
+#include "../ui/list_box.h"
 
 using ListItem = widgets::ListBox::ListItem;
 ui::Scene buildHomeScene(int width, int height);
@@ -113,8 +114,7 @@ ui::Scene buildHomeScene(int width, int height) {
     packagePanel->multiSelect = false;
     packagePanel->filterPredicate = packageFilterDelegate;
     for (const auto &[n, pk]: pkg.packages) {
-        //todo: properly width-limit this. for now it just clips
-        //(no it doesn't, we're just drawing off the edge of the screen)
+        //ListBox will trim strings internally depending on render width
         string displayName = pk->Package;
         displayName.append(" -- ").append(pk->Description);
         packagePanel->add(displayName, pk);
