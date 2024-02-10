@@ -41,7 +41,8 @@ void opkg::LoadSections(std::vector<std::string> *categories, bool skipEntware) 
     for (const auto& [n, pk]: packages) {
         if(skipEntware && pk->Repo == "entware")
             continue;
-        sections.emplace(pk->Section);
+        if(!pk->Section.empty())
+            sections.emplace(pk->Section);
     }
     for (const auto &section: sections) {
         categories->push_back(section);

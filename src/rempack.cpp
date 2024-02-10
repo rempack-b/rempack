@@ -96,10 +96,10 @@ ui::Scene buildHomeScene(int width, int height) {
     /* Applications */
     //full-width horizontal stack underneath the search pane. give it half the remaining height
     auto applicationPane = new ui::HorizontalReflow(0, 0, layout->w, (layout->h - searchPane->h - padding)/2, scene);
-    filterPanel = new widgets::ListBox(0, 0, 200, applicationPane->h, 30);
+    filterPanel = new widgets::ListBox(0, 0, 225, applicationPane->h, 30);
     std::vector<std::string> sections;
     pkg.InitializeRepositories();
-    pkg.LoadSections(&sections);
+    pkg.LoadSections(&sections, false);
     std::sort(sections.begin(), sections.end());
     for (const auto &s: sections)
         filterPanel->add(s);
