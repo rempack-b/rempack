@@ -337,6 +337,8 @@ namespace widgets {
                 _currentView.erase(cit, _currentView.end());
             }
 
+            pageOffset = min(maxPages() - 1, pageOffset);
+
             updatePageDisplay();
         }
 
