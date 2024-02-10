@@ -119,7 +119,7 @@ namespace widgets {
 
 class EventButton : public ui::Button{
     public:
-    EventButton(int x, int y, int w, int h, string text = "") : Button(x, y, w, h, ""){}
+    EventButton(int x, int y, int w, int h, string text = "") : Button(x, y, w, h, text){}
 
     PLS_DEFINE_SIGNAL(BUTTON_EVENT, void*);
 
@@ -142,14 +142,15 @@ class EventButton : public ui::Button{
     public:
         ImageButton(int x, int y, int w, int h, icons::Icon icon) : EventButton(x, y, w, h, "") {
             pixmap = make_shared<ui::Pixmap>(x, y, w, h, icon);
-            //children.push_back(pixmap);
+            pixmap->alpha = WHITE;
+            children.push_back(pixmap);
         }
 
 
         void render() override{
             fb->waveform_mode = WAVEFORM_MODE_GC16;
             if(!enabled) {
-                fb->draw_rect(x, y, w, h, color::GRAY_12, true, 0.5f);
+                fb->draw_rect(x, y, w, h, color::GRAY_12, true);
             }
             pixmap->render();
             //fb->draw_rect(x,y,w,h,BLACK,false);
@@ -252,7 +253,6 @@ class EventButton : public ui::Button{
         }
 
         void render_border() override {
-            fb->waveform_mode = WAVEFORM_MODE_GC16;
             drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.borderThickness,
                            style.startColor, style.inset, style.gradient, style.endColor,
                            style.expA, style.expB);
