@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <map>
+using namespace std;
 struct package{
     std::string Package;
     std::string Description;
@@ -24,6 +25,20 @@ struct package{
     std::string Repo;
     std::string _depends_str;
     std::vector<std::shared_ptr<package>> Depends;
+    std::string _recommends_str;
+    std::vector<std::shared_ptr<package>> Recommends;
+    bool autoInstalled;
+    uint32_t installTime;
+    std::string Status;
+    std::string Alternatives;
+    std::string _conflicts_str;
+    std::vector<std::shared_ptr<package>> Conflicts;
+    std::string _replaces_str;
+    std::vector<std::shared_ptr<package>> Replaces;
+    std::string Conffiles;
+    std::string _provides_str;
+    vector<shared_ptr<package>> Provides;
+    bool Essential;
 };
 class opkg {
 public:
@@ -54,6 +69,9 @@ public:
         auto s =  std::string(buf, len);
         return s;
     }
+private:
+    bool parse_line(shared_ptr<package> &ptr, const char *line, bool update);
+    bool split_str_and_find(const string& children_str, vector<shared_ptr<package>> &field);
 };
 
 
