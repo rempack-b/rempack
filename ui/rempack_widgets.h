@@ -55,18 +55,23 @@ namespace widgets{
         int controlWidth = 200;
         PackageInfoPanel(int x, int y, int w, int h, RoundCornerStyle style) : RoundCornerWidget(x,y,w,h,style){
             _text = make_shared<ui::MultiText>(x,y,w,h,"");
-            _text->set_coords(x+padding,y+padding,w-(2*padding),h-(2*padding));
+            _text->set_coords(x+padding,y+padding,w-(2*padding),h-(2*padding) - controlHeight);
             children.push_back(_text);
             _installBtn = make_shared<EventButton>(x,y,200, controlHeight,"Install");
             _removeBtn = make_shared<EventButton>(x,y,200, controlHeight,"Uninstall");
             _downloadBtn = make_shared<EventButton>(x,y,200, controlHeight,"Download");
             _previewBtn = make_shared<EventButton>(x,y,200, controlHeight,"Preview");
+            children.push_back(_installBtn);
+            children.push_back(_removeBtn);
+            children.push_back(_downloadBtn);
+            children.push_back(_previewBtn);
             layout_buttons();
         }
 
         void on_reflow() override{
-            _text->set_coords(x+padding,y+padding,w-(2*padding),h-(2*padding));
+            _text->set_coords(x+padding,y+padding,w-(2*padding),h-(2*padding) - controlHeight);
             _text->mark_redraw();
+            layout_buttons();
         }
 
         void set_text(string text){
@@ -83,6 +88,21 @@ namespace widgets{
             auto dx = x + padding;
             auto dy = y + h - padding - controlHeight;
             _installBtn->set_coords(dx,dy,controlWidth,controlHeight);
+            dx += controlWidth + padding;
+            _removeBtn->set_coords(dx,dy,controlWidth,controlHeight);
+            dx += controlWidth + padding;
+            _downloadBtn->set_coords(dx,dy,controlWidth,controlHeight);
+            dx += controlWidth + padding;
+            _previewBtn->set_coords(dx,dy,controlWidth,controlHeight);
+
+            _installBtn->on_reflow();
+            _removeBtn->on_reflow();
+            _downloadBtn->on_reflow();
+            _previewBtn->on_reflow();
+            _installBtn->mark_redraw();
+            _removeBtn->mark_redraw();
+            _downloadBtn->mark_redraw();
+            _previewBtn->mark_redraw();
         }
     };
 }
