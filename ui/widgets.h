@@ -36,7 +36,7 @@ namespace widgets {
     inline void drawRoundedCorners(int x0, int y0, int ox, int oy, int radius, framebuffer::FB *fb,
                                    float grayfColor = 0, uint stroke = 1, bool gradient = false,
                                    float grayfendColor = 1,
-                                   float expA = -20.f, float coefB = 8) {
+                                   float expA = -20.f, float coefB = 8, float alphaMask = 0.9f) {
         int x = 0;
         int y = radius;
         int d = -(radius >> 1);
@@ -75,7 +75,9 @@ namespace widgets {
         } else {
             auto dc = abs(grayfendColor - grayfColor) / (float) stroke;
             for (uint si = 0; si <= stroke; si++) {
-                drawRoundedCorners(x0, y0, ox, oy, radius + si, fb, utils::sigmoid(grayfColor + dc * si, expA, coefB));
+                auto fc = utils::sigmoid(grayfColor + dc * si, expA, coefB);
+                if(fc < alphaMask)
+                    drawRoundedCorners(x0, y0, ox, oy, radius + si, fb, fc);
             }
         }
     }
@@ -87,7 +89,7 @@ namespace widgets {
     inline void drawRoundedBox(int x0, int y0, int w, int h, int radius, framebuffer::FB *fb,
                                int stroke = 1, float grayfColor = 0, int shrink = 0, bool gradient = false,
                                float grayfendColor = 1,
-                               float expA = -20.f, float coefB = 8) {
+                               float expA = -20.f, float coefB = 8, float alphaThreshold = 0.9f) {
         int sx = x0 + shrink;
         int sy = y0 + shrink;
         int dx = w - (2 * shrink);
@@ -101,10 +103,13 @@ namespace widgets {
             fb->_draw_rect_fast(sx, sy - stroke - radius, dx, stroke, color);
             fb->_draw_rect_fast(sx, sy + dy + radius, dx, stroke, color);
         } else {
-            drawRoundedCorners(sx, sy, dx, dy, radius, fb, grayfColor, stroke, gradient, grayfendColor, expA, coefB);
+            drawRoundedCorners(sx, sy, dx, dy, radius, fb, grayfColor, stroke, gradient, grayfendColor, expA, coefB, alphaThreshold);
             float dc = abs(grayfendColor - grayfColor) / (float) stroke;
             for (int i = 0; i <= stroke; i++) {
-                auto color = color::from_float(utils::sigmoid(grayfColor + (dc * i), expA, coefB));
+                auto fc = utils::sigmoid(grayfColor + (dc * i), expA, coefB);
+                if(fc>=alphaThreshold)
+                    continue;   //don't break, the curve may change later in the stroke
+                auto color = color::from_float(fc);
                 //left
                 fb->_draw_rect_fast(sx - i - radius - 1, sy, 1, dy, color);
                 //right
@@ -161,9 +166,9 @@ class EventButton : public ui::Button{
             auto dw = min(w,h);
             auto dx = x+(w/2) - (dw/2);
             pixmap->set_coords(dx, y, dw, dw);
-            pixmap->icon.width  = dw;
-            pixmap->icon.height = dw;
-            util::resize_image(pixmap->icon.image, dw, dw, 20);
+            //pixmap->icon.width  = dw;
+            //pixmap->icon.height = dw;
+            //util::resize_image(pixmap->icon.image, dw, dw, 20);
             pixmap->on_reflow();
             pixmap->mark_redraw();
         }
@@ -226,6 +231,7 @@ class EventButton : public ui::Button{
 
             //TODO: this still isn't quite right
         void undraw() override {
+                return;
             //top
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
                           y + style.inset - style.cornerRadius - style.borderThickness,
@@ -256,6 +262,16 @@ class EventButton : public ui::Button{
             drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.borderThickness,
                            style.startColor, style.inset, style.gradient, style.endColor,
                            style.expA, style.expB);
+        }
+
+        void render_inside_fill(float gray = 1.f){
+            //draw a rounded box to fill the awkward space between the border and inner content
+            drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.cornerRadius,
+                           gray, style.inset + style.cornerRadius);
+            //draw a rectangle to cover the rest of the inner area
+            fb->draw_rect(x + style.inset, y + style.inset,
+                          w - style.inset - style.inset, h - style.inset - style.inset,
+                          WHITE, true);
         }
     };
 
