@@ -71,6 +71,7 @@ add_executable(${PROJECT_NAME} src/main.cpp
         ui/rempack_widgets.h
         ui/text_helpers.h
         ui/list_box.h
+        ui/filter_overlay.h
 )
 target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
