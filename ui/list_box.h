@@ -27,9 +27,9 @@ namespace widgets {
                 return this->label == other.label;
             }
 
+            bool _selected = false;
         private:
             shared_ptr<ui::Text> _widget = nullptr;
-            bool _selected = false;
         };
 
         PLS_DEFINE_SIGNAL(LISTBOX_EVENT, const shared_ptr<ListItem>);
@@ -44,14 +44,15 @@ namespace widgets {
 
         LISTBOX_EVENTS events;
 
-        std::function<bool(const shared_ptr<ListItem> &)> filterPredicate = dummy_filter;
+        std::function<bool(const shared_ptr<ListItem> &)> filterPredicate;
+        std::function<bool(const shared_ptr<ListItem> &, shared_ptr<ListItem> &)> sortPredicate;
 
         bool multiSelect = true; //allow selecting more than one entry
 
         int pageSize() {
             auto size = ((h - padding) / (itemHeight + padding));
             if(size < (int)_sortedView.size())   //if we have more items than will fit on one page,
-                size--;                     //reserve at least one line of space at the bottom of the view for the nav elements
+                size--;                          //reserve at least one line of space at the bottom of the view for the nav elements
             return size;
         }
 
@@ -71,10 +72,10 @@ namespace widgets {
             this->itemHeight = itemHeight;
             _pageLabel = make_shared<ui::Text>(0,0,w,itemHeight,"");
 
-            _navLL = make_shared<ImageButton>(0,0,w,itemHeight,ICON(assets::png_fast_arrow_left_png));
-            _navL = make_shared<ImageButton>(0,0,w,itemHeight,ICON(assets::png_nav_arrow_left_png));
-            _navR = make_shared<ImageButton>(0,0,w,itemHeight,ICON(assets::png_nav_arrow_right_png));
-            _navRR = make_shared<ImageButton>(0,0,w,itemHeight,ICON(assets::png_fast_arrow_right_png));
+            _navLL = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_fast_arrow_left_png));
+            _navL = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_nav_arrow_left_png));
+            _navR = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_nav_arrow_right_png));
+            _navRR = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_fast_arrow_right_png));
             _navLL->hide();
             _navL->hide();
             _navR->hide();
@@ -93,7 +94,7 @@ namespace widgets {
             layout_buttons();
         }
 
-        void add(string label, std::any object = nullptr) {
+        shared_ptr<ListItem> add(const string& label, const std::any& object = nullptr) {
             auto item = make_shared<ListItem>(label, object);
             item->_widget = make_shared<ui::Text>(x, y, w, itemHeight, label);
             //TODO: style sheets
@@ -102,9 +103,10 @@ namespace widgets {
             contents.push_back(item);
             events.added(item);
             this->mark_redraw();
+            return item;
         }
 
-        bool remove(string label) {
+        bool remove(const string& label) {
             //sure, you could use std::find but C++ Lambdas are an affront to all that is good in this world
             int i = 0;
             shared_ptr<ListItem> item = nullptr;
@@ -188,16 +190,18 @@ namespace widgets {
 
         void layout_buttons(){
             int bx = x + padding;
-            int by = y + h - itemHeight;
+            int by = y + h - itemHeight - padding;
             stringstream lss;
             lss << "[ " << maxPages() << "/" << maxPages() << " ]";
             auto [lbx, lby] = utils::measure_string(lss.str(), ui::Widget::style.font_size);
             auto lbw = lbx + padding;
             _pageLabel->set_coords(bx,by,lbw,itemHeight);
+            _pageLabel->style.valign = ui::Style::VALIGN::BOTTOM;
             bx += lbw + padding;
-            auto buttonWidth =( (w - lbw - padding)/4);
+            //TODO: this is still wrong for very narrow boxes
+            auto buttonWidth =( (w - lbw - padding)/5);
             buttonWidth = min(buttonWidth, 200);
-            //buttonWidth = max(buttonWidth, itemHeight);
+            buttonWidth = max(buttonWidth, itemHeight);
             _navLL->set_coords(bx,by,buttonWidth, itemHeight);
             bx += buttonWidth + padding;
             _navL->set_coords(bx,by,buttonWidth, itemHeight);
@@ -227,7 +231,6 @@ namespace widgets {
         int pageOffset = 0;
 
         void updateControlStates(){
-            printf("updating control states: MP %d CP %d PS %d\n",maxPages(),currentPage(),pageSize());
             if(maxPages() == 1){
                 _navLL->hide();
                 _navL->hide();
@@ -305,13 +308,15 @@ namespace widgets {
         virtual void refresh_list() {
             _sortedView.clear();
             for (auto &item: contents) {
-                if (filterPredicate(item)) {
+                if (!filterPredicate || filterPredicate(item)) {
                     _sortedView.push_back(item);
                 }
             }
 
-            //TODO: expose a sort predicate. for now it's just alphabetic
-            std::sort(_sortedView.begin(), _sortedView.end());
+            if(sortPredicate)
+                std::sort(_sortedView.begin(), _sortedView.end(), sortPredicate);
+            else
+                std::sort(_sortedView.begin(), _sortedView.end());
 
             auto offset = pageOffset * pageSize();
             auto count = std::min((int) pageSize(), (int) _sortedView.size() - offset);
