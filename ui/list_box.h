@@ -42,6 +42,7 @@ namespace widgets {
         std::function<bool(const shared_ptr<ListItem> &)> filterPredicate;
         std::function<bool(const shared_ptr<ListItem> &, shared_ptr<ListItem> &)> sortPredicate;
 
+        bool selectable = true; //allow selecting of entries at all
         bool multiSelect = true; //allow selecting more than one entry
 
         int pageSize() {
@@ -166,6 +167,9 @@ namespace widgets {
 
         //check the Y position relative to top of widget, divide by itemHeight
         void on_mouse_click(input::SynMotionEvent &ev) override {
+            ev.stop_propagation();
+            if(!selectable)
+                return;
             auto hgt = itemHeight + padding;
             auto sy = ev.y - this->y;
             auto shgt = sy / hgt;
@@ -183,27 +187,33 @@ namespace widgets {
         shared_ptr<ui::Text> _pageLabel;
         shared_ptr<ImageButton> _navLL, _navL, _navR, _navRR;
 
-        void layout_buttons(){
+        void layout_buttons() {
             int bx = x + padding;
             int by = y + h - itemHeight - padding;
             stringstream lss;
             lss << "[ " << maxPages() << "/" << maxPages() << " ]";
             auto [lbx, lby] = utils::measure_string(lss.str(), ui::Widget::style.font_size);
             auto lbw = lbx + padding;
-            _pageLabel->set_coords(bx,by,lbw,itemHeight);
+            _pageLabel->set_coords(bx, by, lbw, itemHeight);
             _pageLabel->style.valign = ui::Style::VALIGN::BOTTOM;
             bx += lbw + padding;
-            //TODO: this is still wrong for very narrow boxes
-            auto buttonWidth =( (w - lbw - padding)/5);
+            //this width calculation is wrong for very narrow windows
+            //I can't be bothered to fix it right now
+            auto buttonWidth = ((w - lbw - padding) / 5);
+            if (maxPages() <= 2)
+                buttonWidth *= 2;
             buttonWidth = min(buttonWidth, 200);
             buttonWidth = max(buttonWidth, itemHeight);
-            _navLL->set_coords(bx,by,buttonWidth, itemHeight);
+            if (maxPages() > 2) {
+                _navLL->set_coords(bx, by, buttonWidth, itemHeight);
+                bx += buttonWidth + padding;
+            }
+            _navL->set_coords(bx, by, buttonWidth, itemHeight);
             bx += buttonWidth + padding;
-            _navL->set_coords(bx,by,buttonWidth, itemHeight);
+            _navR->set_coords(bx, by, buttonWidth, itemHeight);
             bx += buttonWidth + padding;
-            _navR->set_coords(bx,by,buttonWidth, itemHeight);
-            bx += buttonWidth + padding;
-            _navRR->set_coords(bx,by,buttonWidth, itemHeight);
+            if (maxPages() > 2)
+                _navRR->set_coords(bx, by, buttonWidth, itemHeight);
             _pageLabel->on_reflow();
             _navLL->on_reflow();
             _navL->on_reflow();
@@ -216,9 +226,6 @@ namespace widgets {
             _navRR->mark_redraw();
         }
     private:
-        static bool dummy_filter(shared_ptr<ListItem> it) {
-            return true;
-        }
         //TODO: style sheets
         int itemHeight;
         int padding = 5;
@@ -234,10 +241,16 @@ namespace widgets {
                 _pageLabel->hide();
                 return;
             }
-            _navLL->show();
+            if(maxPages() > 2) {
+                _navLL->show();
+                _navRR->show();
+            }
+            else{
+                _navLL->hide();
+                _navRR->hide();
+            }
             _navL->show();
             _navR->show();
-            _navRR->show();
             _pageLabel->show();
             if(currentPage() == 1){
                 _navLL->disable();
