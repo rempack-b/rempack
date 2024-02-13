@@ -269,7 +269,7 @@ namespace widgets {
         }
 
         void LL_CLICK(void* v){
-            pageOffset = 0;
+            pageOffset = max(0, pageOffset - (maxPages() > 10 ? 10 : 5));
             updatePageDisplay();
             mark_redraw();
         }
@@ -285,7 +285,7 @@ namespace widgets {
             mark_redraw();
         }
         void RR_CLICK(void* v){
-            pageOffset = maxPages() - 1;
+            pageOffset = min(pageOffset + (maxPages() > 10 ? 10 : 5), maxPages() - 1);
             updatePageDisplay();
             mark_redraw();
         }

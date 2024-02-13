@@ -178,6 +178,7 @@ ui::Scene buildHomeScene(int width, int height) {
         //ListBox will trim strings internally depending on render width
         string displayName = pk->Package;
         displayName.append(" -- ").append(pk->Description);
+        displayName.erase(std::remove(displayName.begin(), displayName.end(), '\n'), displayName.end());
         packagePanel->add(displayName, pk);
     }
     packagePanel->events.selected += PLS_DELEGATE(onPackageSelect);
