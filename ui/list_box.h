@@ -7,11 +7,6 @@
 #include <unordered_set>
 #include "widgets.h"
 namespace widgets {
-//TODO: add pagination controls
-//
-// currentPage/totalPages fast-arrow-left nav-arrow-left
-// [1/5] [ << ][ < ][ > ][ >> ]
-//
     class ListBox : public RoundCornerWidget {
     public:
         struct ListItem {

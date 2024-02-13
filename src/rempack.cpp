@@ -4,14 +4,17 @@
 //#define DEBUG_FB
 #include <rmkit.h>
 #include <unordered_set>
+#include <utility>
 #include "rempack.h"
 #include "../ui/widgets.h"
 #include "../ui/debug_widgets.h"
 #include "../ui/rempack_widgets.h"
 #include "../opkg/opkg.h"
 #include "../ui/list_box.h"
+#include "../include/algorithm/boyer_moore.h"
 
 using ListItem = widgets::ListBox::ListItem;
+namespace boyer = strings::boyer_moore;
 ui::Scene buildHomeScene(int width, int height);
 
 opkg pkg;
@@ -40,13 +43,20 @@ void Rempack::startApp() {
     }
 
 }
-//todo: this should be more complex than a string vector
-//probably some type of structure that contains a sliver of logic based on its type
-//i.e. repoFilterStruct(string includeRepoName) or sectionFilterStruct(string includeSections)
-//for now this is simply sections because that's the only filter I've implemented yet
+
+//this is getting a little unwieldy.
+//instead of doing the work in this delegate, we should run the filter and sort
+//in the background and trigger a list refresh when finished.
+//at that point, it makes the most sense to simply clear the listbox and
+//just write our results in directly, then we wouldn't need this delegate setup
+
+//for now though, I'll keep shoehorning it in here
+
 std::unordered_set<std::string> _filters;
 shared_ptr<package> _selected;
 widgets::FilterOptions _filterOpts;
+std::string _searchQuery = "";
+
 bool packageFilterDelegate(const shared_ptr<ListItem> &item) {
     auto pk = any_cast<shared_ptr<package>>(item->object);
     bool visible = false;
@@ -56,13 +66,28 @@ bool packageFilterDelegate(const shared_ptr<ListItem> &item) {
         return false;
     if(!_filterOpts.Repos.empty() && !_filterOpts.Repos.find(pk->Repo)->second)
         return false;
-    if(_filterOpts.Installed && pk->State == package::Installed)
-        return true;
-    if(_filterOpts.NotInstalled && pk->State == package::NotInstalled)
-        return true;
-    // if(_filterOpts.Upgradable && pk->_is_updatable)
-    //    return true;
-    return false;
+    if(!((_filterOpts.Installed && pk->State == package::Installed) ||
+    (_filterOpts.NotInstalled && pk->State == package::NotInstalled)))
+        return false;   //yes, I feel bad
+    // if(_filterOpts.Upgradable && !pk->_is_updatable)
+    //    return false;
+    if(!_searchQuery.empty()) {
+        boyer::pattern pat;
+        boyer::init_pattern(_searchQuery, pat);
+        std::vector<size_t> indexes = boyer::search(pk->Package, pat);
+        if (indexes.empty()) {
+            if(!_filterOpts.SearchDescription)
+                return false;
+            indexes = boyer::search(pk->Description, pat);
+            if (indexes.empty())
+                return false;
+        }
+    }
+    return true;
+}
+void searchQueryUpdate(string s){
+    _searchQuery = std::move(s);
+    packagePanel->mark_redraw();
 }
 bool sectionFilterDelegate(const shared_ptr<ListItem> &item){
     for(auto &[r,s]: _filterOpts.Repos){
@@ -124,6 +149,7 @@ ui::Scene buildHomeScene(int width, int height) {
     filterButton->events.updated += onFiltersChanged;
     auto settingButton = new widgets::ConfigButton(padding*2, 0, 60, 60);
     auto searchBox = new widgets::SearchBox(padding, 0, layout->w - 120 - padding*2, 60, widgets::RoundCornerStyle());
+    searchBox->events.done += PLS_DELEGATE(searchQueryUpdate);
     searchPane->pack_start(filterButton);
     searchPane->pack_start(searchBox);
     searchPane->pack_start(settingButton);

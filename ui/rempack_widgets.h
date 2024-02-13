@@ -32,6 +32,7 @@ namespace widgets{
         bool Installed;
         bool Upgradable;
         bool NotInstalled;
+        bool SearchDescription;
         std::map<std::string, bool> Repos;
         std::map<std::string, bool> Licenses;
     };
@@ -117,6 +118,12 @@ namespace widgets{
             unTog->events.toggled += [this](bool s){options->NotInstalled = s; upate_event();};
             children.push_back(unTog);
             dy += padding + unTog->h;
+            auto descTog = make_shared<ui::ToggleButton>(dx,dy,dw,50, "Search Descriptions");
+            descTog->toggled = options->NotInstalled;
+            descTog->style.justify = ui::Style::JUSTIFY::LEFT;
+            descTog->events.toggled += [this](bool s){options->SearchDescription = s; upate_event();};
+            children.push_back(descTog);
+            dy += padding + descTog->h;
             if(!options->Repos.empty()) {
                 //TODO: set height of the list based on number of entries
                 _repoList = make_shared<ListBox>(dx, dy, dw, 200, 25);

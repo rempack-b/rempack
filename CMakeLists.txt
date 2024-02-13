@@ -56,7 +56,10 @@ include_directories(SYSTEM "${RMKIT_DIR}")
 #add /include to search paths for font_embed.h
 include_directories("${CMAKE_SOURCE_DIR}/include")
 include_directories("${CMAKE_SOURCE_DIR}/assets")
+include_directories("${CMAKE_SOURCE_DIR}/ui")
+include_directories("${CMAKE_SOURCE_DIR}/opkg")
 include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/extern")
+
 
 find_package(ZLIB)
 
@@ -71,7 +74,6 @@ add_executable(${PROJECT_NAME} src/main.cpp
         ui/rempack_widgets.h
         ui/text_helpers.h
         ui/list_box.h
-        ui/filter_overlay.h
 )
 target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
@@ -96,7 +98,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         )
 #see also: rm-toolchain.cmake
 
-target_link_libraries(${PROJECT_NAME} ZLIB::ZLIB)
+target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
 
 #add_library(rmkit ${RMKIT_FILE})
 #set_target_properties(rmkit PROPERTIES LINKER_LANGUAGE CXX)
