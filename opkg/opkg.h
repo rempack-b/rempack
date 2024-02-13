@@ -21,6 +21,7 @@ struct package{
     string Package;
     string Description;
     string Homepage;
+    //TODO! Read out and store the intsalled version as well as version from the repo
     string Version;
     string Section;
     string Maintainer;
@@ -32,6 +33,7 @@ struct package{
     string Repo;
     string _depends_str;
     vector<shared_ptr<package>> Depends;
+    vector<shared_ptr<package>> Dependents;
     string _recommends_str;
     vector<shared_ptr<package>> Recommends;
     bool autoInstalled;

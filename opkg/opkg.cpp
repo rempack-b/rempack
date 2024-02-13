@@ -97,9 +97,21 @@ string opkg::FormatPackage(const shared_ptr<package> &pk) {
         ss << "Installed size: " << pk->Size << endl;
     }
     else if(pk->State == package::InstallError){
-        ss << "Installation error! Check the opkg manual for help." << endl;
+        ss << "Installation error! Placeholder text." << endl;
     }
 
+    if(!pk->Depends.empty()){
+        ss << "Depends: ";
+        for(const auto &d: pk->Depends)
+            ss << d->Package << " ";
+        ss << endl;
+    }
+    if(!pk->Dependents.empty()){
+        ss << "Depended by: ";
+        for(const auto &d: pk->Dependents)
+            ss << d->Package << " ";
+        ss << endl;
+    }
     return ss.str();
 }
 
@@ -152,6 +164,9 @@ void opkg::link_dependencies(){
         if(!pkg->_depends_str.empty()) {
             if (!split_str_and_find(pkg->_depends_str, pkg->Depends)) {
                 //printf("Problem resolving dependencies for package %s\n", pkg->Package.c_str());
+            }
+            for(const auto &dpk: pkg->Depends){
+                dpk->Dependents.push_back(pkg);
             }
         }
         if(!pkg->_recommends_str.empty()){
@@ -233,7 +248,7 @@ inline bool try_parse_uint(const char *prefix, const char *line, uint &field) {
         field = stoul(f);
         return true;
     }
-    catch (exception) {
+    catch (exception&) {
         return false;
     }
 }
@@ -246,7 +261,7 @@ inline bool try_parse_long(const char *prefix, const char *line, long &field) {
         field = stol(f);
         return true;
     }
-    catch (exception) {
+    catch (exception&) {
         return false;
     }
 }
@@ -444,14 +459,14 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update) {
             auto dln = strlen(line);
             if (dln <= 2)
                 return false;
-            for (int i = 0; i < dln; i++)
+            for (uint i = 0; i < dln; i++)
                 if (line[i] != ' ' && line[i] != '\n' && line[i] != '\r') {
                     printf("BadChar: %d :: %2x :: %c\n", i, line[0], line[0]);
                     printf("Unhandled tag:%s\n", line);
                     return true;
                 }
             printf("UNKN: ");
-            for (int j = 0; j < dln; j++) {
+            for (uint j = 0; j < dln; j++) {
                 printf("%2x ", line[j]);
             }
             printf("\n");
