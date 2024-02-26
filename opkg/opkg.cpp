@@ -18,6 +18,9 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <stack>
+
+#define  CONTAINS(x,z) (x.find(z) != x.end())
 
 namespace fs = filesystem;
 using namespace std;
@@ -39,6 +42,61 @@ using namespace std;
 
 const fs::path OPKG_DB{"/opt/var/opkg-lists"};
 const fs::path OPKG_LIB{"/opt/lib/opkg"}; //info(dir) lists(dir(empty?)) status(f)
+unordered_set<string> formatExcludeNames{"libc", "libgcc"};
+
+//need to remove LD_PRELOAD var set by rm2fb-client:
+//LD_PRELOAD=/opt/lib/librm2fb_client.so.1
+int execute(const std::string& cmd, std::string& output) {
+    const string preload = "/opt/lib/librm2fb_client.so.1";
+    const int bufsize=128;
+    std::array<char, bufsize> buffer{};
+
+    stringstream ss;
+    ss << "source ~/.bashrc; ";
+    ss << "export LD_PRELOAD=${LD_PRELOAD%" << preload << "}; ";
+    ss << cmd << "; ";
+    ss << "export LD_PRELOAD=${LD_PRELOAD}:" << preload;
+
+    auto pipe = popen(ss.str().c_str(), "r");
+    if (!pipe) throw std::runtime_error("popen() failed!");
+
+    size_t count;
+    do {
+        if ((count = fread(buffer.data(), 1, bufsize, pipe)) > 0) {
+            output.insert(output.end(), std::begin(buffer), std::next(std::begin(buffer), count));
+        }
+    } while(count > 0);
+
+    return pclose(pipe);
+};
+
+void opkg::Install(const vector<shared_ptr<package>>& targets, const function<void(int, const string &)>& callback) {
+    stringstream ss;
+    ss << "opkg install ";
+    for(const auto& p: targets)
+        ss << p->Package << " ";
+    string output;
+    auto ret = execute(ss.str(), output);
+
+    callback(ret, output);
+}
+
+void opkg::Uninstall(const vector<shared_ptr<package>>& targets, const function<void(int, const string &)>& callback) {
+    stringstream ss;
+    ss << "opkg remove ";
+    for(const auto& p: targets)
+        ss << p->Package << " ";
+    string output;
+    auto ret = execute(ss.str(), output);
+
+    callback(ret, output);
+}
+
+void opkg::UpdateRepos(const function<void(int, const string &)> &callback) {
+    string output;
+    auto ret = execute("opkg update", output);
+    callback(ret, output);
+}
 
 void opkg::update_lists(){
     unordered_set<string> _sections;
@@ -78,12 +136,14 @@ string opkg::FormatPackage(const shared_ptr<package> &pk) {
     if(!pk->Package.empty()) ss << "Package" << ": " << pk->Package << endl;
     if(!pk->Description.empty()) ss << "Description" << ": " << pk->Description << endl;
     if(!pk->Homepage.empty()) ss << "Homepage" << ": " << pk->Homepage << endl;
-    if(!pk->Version.empty()) ss << "Version" << ": " << pk->Version << endl;
+    if(!pk->InstalledVersion.empty()) ss << "Installed Version" << ": " << pk->InstalledVersion << endl;
+    if(!pk->UpstreamVersion.empty()) ss << "Available Version" << ": " << pk->UpstreamVersion << endl;
     if(!pk->Maintainer.empty()) ss << "Maintainer" << ": " << pk->Maintainer << endl;
     if(!pk->Architecture.empty()) ss << "Architecture" << ": " << pk->Architecture << endl;
     if(!pk->Repo.empty()) ss << "Repo" << ": " << pk->Repo << endl;
 
-    if(pk->State == package::Installed) {
+    if(pk->IsInstalled()) {
+        ss << "Status: Installed" << endl;
         time_t intime = pk->installTime;
         auto tm = localtime(&intime);
         ss << "Installed on " << asctime(tm) << endl;
@@ -97,7 +157,10 @@ string opkg::FormatPackage(const shared_ptr<package> &pk) {
         ss << "Installed size: " << pk->Size << endl;
     }
     else if(pk->State == package::InstallError){
-        ss << "Installation error! Placeholder text." << endl;
+        ss << "Status: Installation error! Placeholder text!" << endl;
+    }
+    else{
+        ss << "Status: Not installed" << endl;
     }
 
     if(!pk->Depends.empty()){
@@ -109,14 +172,98 @@ string opkg::FormatPackage(const shared_ptr<package> &pk) {
     if(!pk->Dependents.empty()){
         ss << "Depended by: ";
         for(const auto &d: pk->Dependents)
-            ss << d->Package << " ";
+            if(d->IsInstalled())
+                ss << d->Package << " ";
         ss << endl;
     }
     return ss.str();
 }
 
+bool existsInChildren(const shared_ptr<package> &pkg, vector<shared_ptr<package>> &set, bool top, unordered_set<string> &visited){
+    if(set.empty())
+        return false;
+    for(const auto &dpkg: set){
+        if(!visited.emplace(dpkg->Package).second)
+            continue;
+        if(CONTAINS(formatExcludeNames, dpkg->Package))
+            continue;
+        if(dpkg == pkg) {
+            if (!top)
+                return true;
+            continue;
+        }
+        if(dpkg->Depends.empty())
+            continue;
+        if(existsInChildren(pkg, dpkg->Depends, false, visited))
+            return true;
+    }
+    return false;
+}
+
+inline bool hasNextLine(vector<shared_ptr<package>> &set, int offset, bool excludeInstalled, unordered_set<string> &visited){
+    if(offset >= set.size())
+        return false;
+    for(auto it = set.begin() + offset; it < set.end(); it++){
+        auto dpkg = *it;
+       //if(CONTAINS(visited, dpkg->Package))
+       //    return true;
+        if(CONTAINS(formatExcludeNames, dpkg->Package))
+            continue;
+        if(excludeInstalled && dpkg->IsInstalled())
+            continue;
+        unordered_set<string> cps;
+        if(existsInChildren(dpkg, set, true, cps))
+            continue;
+        return true;
+    }
+    return false;
+}
+
+static void recurseDependencyTree(const shared_ptr<package>& pkg, stringstream &ss, bool excludeInstalled, stringstream &prefix, unordered_set<string> &visited){
+    if(excludeInstalled && pkg->IsInstalled())
+        return;
+    if(CONTAINS(formatExcludeNames, pkg->Package))
+        return;
+
+    ss << prefix.str() << '-' << pkg->Package;// << endl;
+    if(pkg->Depends.empty()) {
+        ss << endl;
+        return;
+    }
+    ss << " (";
+    for(const auto &dpk: pkg->Depends)
+        ss << dpk->Package << ", ";
+    ss.seekp(-2, std::ios_base::end);
+    ss << ")" << endl;
+
+    prefix << "|";
+    for(int i = 0; i < pkg->Depends.size(); i++) {
+        if (!hasNextLine(pkg->Depends, i, excludeInstalled, visited)) {
+            prefix.seekp(-2, std::ios_base::end);
+            prefix << ".:";
+        }
+        auto &dpkg = pkg->Depends.at(i);
+        if (!visited.emplace(dpkg->Package).second) {
+            ss << prefix.str() << '-' << dpkg->Package << endl;
+        } else
+            recurseDependencyTree(dpkg, ss, excludeInstalled, prefix, visited);
+    }
+    auto lpx = prefix.str().substr(0, std::max((size_t)1, prefix.str().length() - 1));
+    prefix.str(lpx);
+}
+
+string opkg::formatDependencyTree(const shared_ptr<package>& pkg, bool excludeInstalled) {
+    if (pkg->Depends.empty())
+        return "";
+    stringstream ss;
+    stringstream prefix;
+    unordered_set<string> visited;
+    recurseDependencyTree(pkg, ss, excludeInstalled, prefix, visited);
+    return ss.str();
+}
+
 //TODO: this needs to move to utilities
-vector<string> split(const string &s, const char delimiter)
+vector<string> split_str(const string &s, const char delimiter)
 {
     vector<string> splits;
     string _split;
@@ -130,7 +277,7 @@ vector<string> split(const string &s, const char delimiter)
 }
 
 bool opkg::split_str_and_find(const string& children_str, vector<shared_ptr<package>> &field){
-    auto splits = split(children_str, ',');
+    auto splits = split_str(children_str, ',');
     if(splits.empty()){
         return false;
     }
@@ -141,7 +288,7 @@ bool opkg::split_str_and_find(const string& children_str, vector<shared_ptr<pack
         {
             //dependency may have a version in the string: Failed to resolve dependency tarnish (= 2.6-3) for package oxide-utils
             //strip the version here and try again. This seems to catch everything
-            auto dsplit = split(s, ' ');
+            auto dsplit = split_str(s, ' ');
             if(!dsplit.empty()){
                 it = packages.find(dsplit[0]);
                 if(it != packages.cend()){
@@ -267,7 +414,7 @@ inline bool try_parse_long(const char *prefix, const char *line, long &field) {
 }
 
 //this is mostly copied from opkg's own parser. I don't hate it?
-bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update) {
+bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, bool upstream) {
     static bool parsing_desc = false; //this is ugly, but it's what opkg does so whatever I guess
     if (ptr == nullptr)
         return false;
@@ -436,8 +583,13 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update) {
             goto NOT_RECOGNIZED;
         }
         case 'V': {
-            if (try_parse_str("Version", line, ptr->Version)) {
+            string s;
+            if (try_parse_str("Version", line, s)) {
                 parsing_desc = false;
+                if(upstream)
+                    ptr->UpstreamVersion = s;
+                else
+                    ptr->InstalledVersion = s;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -488,7 +640,7 @@ void opkg::InitializeRepositories() {
         int count = 0;
         while (gzgets(gzf, cbuf, sizeof(cbuf)) != nullptr) {
             count++;
-            if (!parse_line(pk, cbuf, false)) {     //if parse_line returns false, we're done parsing this package
+            if (!parse_line(pk, cbuf, false, true)) {     //if parse_line returns false, we're done parsing this package
                 if (pk->Package.empty())
                     continue;
 
@@ -516,7 +668,7 @@ void opkg::InitializeRepositories() {
 
     pc = 0;
     for(string line; getline(statusfile, line);){
-        parse_line(pk, line.c_str(), true);     //no need to do any logic here;
+        parse_line(pk, line.c_str(), true, false);     //no need to do any logic here;
         pc++;                                   //parse_line will take care of updating extant packages
     }
     statusfile.close();
@@ -545,7 +697,7 @@ void opkg::InitializeRepositories() {
             pk = pit->second;
             for (string line; getline(cfile, line);) {
                 pc++;
-                parse_line(pk, line.c_str(), false);    //no need to update extant, we know what package this is from the filename
+                parse_line(pk, line.c_str(), false, false);    //no need to update extant, we know what package this is from the filename
             }
         }
     }

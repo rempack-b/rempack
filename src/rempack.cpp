@@ -12,6 +12,7 @@
 #include "../opkg/opkg.h"
 #include "../ui/list_box.h"
 #include "../include/algorithm/boyer_moore.h"
+#include "widget_helpers.h"
 
 using ListItem = widgets::ListBox::ListItem;
 namespace boyer = strings::boyer_moore;
@@ -20,6 +21,7 @@ ui::Scene buildHomeScene(int width, int height);
 opkg pkg;
 widgets::ListBox *filterPanel, *packagePanel;
 widgets::PackageInfoPanel *displayBox;
+widgets::MenuData *_menuData;
 
 void Rempack::startApp() {
     //std::raise(SIGINT);   //firing a sigint here helps synchronize remote gdbserver
@@ -27,7 +29,6 @@ void Rempack::startApp() {
     shared_ptr<framebuffer::FB> fb;
     fb = framebuffer::get();
     fb->clear_screen();
-
     auto scene = buildHomeScene(fb->width, fb->height);
     ui::MainLoop::set_scene(scene);
 
@@ -66,7 +67,7 @@ bool packageFilterDelegate(const shared_ptr<ListItem> &item) {
         return false;
     if(!_filterOpts.Repos.empty() && !_filterOpts.Repos.find(pk->Repo)->second)
         return false;
-    if(!((_filterOpts.Installed && pk->State == package::Installed) ||
+    if(!((_filterOpts.Installed && pk->IsInstalled()) ||
     (_filterOpts.NotInstalled && pk->State == package::NotInstalled)))
         return false;   //yes, I feel bad
     // if(_filterOpts.Upgradable && !pk->_is_updatable)
@@ -107,6 +108,8 @@ void onFilterRemoved(shared_ptr<ListItem> item) {
 void onPackageSelect(shared_ptr<ListItem> item) {
     auto pk = any_cast<shared_ptr<package>>(item->object);
     printf("Package selected: %s\n", pk->Package.c_str());
+    _selected = pk;
+    displayBox->set_states(pk->IsInstalled());
     displayBox->undraw();
     displayBox->set_text(opkg::FormatPackage(pk));
     displayBox->mark_redraw();
@@ -114,14 +117,42 @@ void onPackageSelect(shared_ptr<ListItem> item) {
 void onPackageDeselect(shared_ptr<ListItem> item) {
     auto pk = any_cast<shared_ptr<package>>(item->object);
     printf("Package deselected: %s\n", pk->Package.c_str());
+    _selected = nullptr;
+    displayBox->set_states(false);
     displayBox->undraw();
     displayBox->set_text("");
     displayBox->mark_redraw();
 }
-void onFiltersChanged(widgets::FilterOptions *options){
-    _filterOpts = *options;
+void onFiltersChanged(widgets::FilterOptions &options){
+    _filterOpts = options;
     filterPanel->mark_redraw();
     packagePanel->mark_redraw();
+}
+void markInstall(shared_ptr<package> pkg){
+    if(pkg->IsInstalled())
+        return;
+    if(_menuData->PendingInstall.emplace(pkg->Package).second)
+        for(auto const &spk: pkg->Depends)
+            markInstall(spk);
+}
+void onInstallClick(void*){
+    //auto str = pkg.formatDependencyTree(_selected, false);
+    //cout << str;
+    //auto m = new widgets::ModalOverlay(20,20,1200,1400,{widgets::ModalOverlay::ModalButton::OK}, str);
+    auto m = new widget_helpers::InstallDialog(500,500,600,800,vector<shared_ptr<package>>{_selected});
+    //auto m = new ui::InfoDialog(50,50,200,200);
+    //m->set_title("installing your mom");
+    m->show();
+    _menuData->PendingInstall.emplace(_selected->Package);
+}
+void onUninstallClick(void*){
+    _menuData->PendingRemove.emplace(_selected->Package);
+}
+void onDownloadClick(void*){
+
+}
+void onPreviewClick(void*){
+
 }
 
 //1404x1872 - 157x209mm -- 226dpi
@@ -147,7 +178,8 @@ ui::Scene buildHomeScene(int width, int height) {
     }
     auto filterButton = new widgets::FilterButton(0,0,60,60, _filterOpts);
     filterButton->events.updated += onFiltersChanged;
-    auto settingButton = new widgets::ConfigButton(padding*2, 0, 60, 60);
+    _menuData = new widgets::MenuData;
+    auto settingButton = new widgets::ConfigButton(padding*2, 0, 60, 60, _menuData);
     auto searchBox = new widgets::SearchBox(padding, 0, layout->w - 120 - padding*2, 60, widgets::RoundCornerStyle());
     searchBox->events.done += PLS_DELEGATE(searchQueryUpdate);
     searchPane->pack_start(filterButton);
@@ -185,6 +217,11 @@ ui::Scene buildHomeScene(int width, int height) {
     packagePanel->events.deselected += PLS_DELEGATE(onPackageDeselect);
 
     displayBox = new widgets::PackageInfoPanel(0,0,applicationPane->w,applicationPane->h, widgets::RoundCornerStyle());
+
+    displayBox->events.install += PLS_DELEGATE(onInstallClick);
+    displayBox->events.uninstall += PLS_DELEGATE(onUninstallClick);
+    displayBox->events.download += PLS_DELEGATE(onDownloadClick);
+    displayBox->events.preview += PLS_DELEGATE(onPreviewClick);
 
     layout->pack_start(searchPane);
     layout->pack_start(applicationPane);
