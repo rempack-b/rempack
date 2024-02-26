@@ -7,6 +7,28 @@
 #include <unordered_set>
 #include "widgets.h"
 namespace widgets {
+    /*
+     * Displays a list of items.
+     * Provides sorting and filtering delegates to control displayed items, as well as
+     * text clipping and pagination.
+     * Features multiselect, uniselect, read only modes. Fires events when de/selected
+     * and when items added/removed from contents.
+     * Items are represented as a simple string with an attached std::any object which can store any user data.
+     * Reflow is supported: list will be reformatted when the control is resized or moved.
+     *
+     * Presently only single-line items are supported; overflowing text will be trimmed.
+     * Each item in the list must have a unique label.
+     *
+     * ___________________________
+     * | Item 1                  |
+     * | Item 2                  |
+     * | Item 3 with a clipped la|
+     * | [1/4] [<<] [<] [>] [>>] |
+     * ---------------------------
+     * [page number] [back 5/10] [back 1] [forward 1] [forward 5/10]
+     * Fast nav buttons switch from 5 to 10 pages when there are more than 10 pages.
+     * Keypad to enter page number would be nice
+     */
     class ListBox : public RoundCornerWidget {
     public:
         struct ListItem {
@@ -46,7 +68,7 @@ namespace widgets {
         bool multiSelect = true; //allow selecting more than one entry
 
         int pageSize() {
-            auto size = ((h - padding) / (itemHeight + padding));
+            auto size = (int)ceil(float(h - padding - padding) / float(itemHeight + padding));
             if(size < (int)_sortedView.size())   //if we have more items than will fit on one page,
                 size--;                          //reserve at least one line of space at the bottom of the view for the nav elements
             return size;
@@ -57,7 +79,7 @@ namespace widgets {
         }
 
         int maxPages(){
-            return floor(_sortedView.size() / pageSize()) + 1;
+            return (int)ceil((float)_sortedView.size() / (float)pageSize());
         }
 
         //please call mark_redraw() on this widget after editing contents or selections
@@ -88,6 +110,12 @@ namespace widgets {
             _navR->events.clicked += PLS_DELEGATE(R_CLICK);
             _navRR->events.clicked += PLS_DELEGATE(RR_CLICK);
             layout_buttons();
+        }
+
+        ListBox(int x, int y, int w, int h, int itemHeight, const vector<string>& items): ListBox(x,y,w,h,itemHeight) {
+            for(const auto &s: items){
+                this->add(s);
+            }
         }
 
         shared_ptr<ListItem> add(const string& label, const std::any& object = nullptr) {
@@ -137,7 +165,8 @@ namespace widgets {
         }
 
         void undraw() override {
-            fb->draw_rect(this->x, this->y, this->w, this->h, WHITE, true);
+            //fb->draw_rect(this->x, this->y, this->w, this->h, WHITE, true);
+            RoundCornerWidget::render_inside_fill();
             RoundCornerWidget::undraw();
         }
 
