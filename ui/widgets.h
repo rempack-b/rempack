@@ -136,10 +136,31 @@ class EventButton : public ui::Button{
     BUTTON_EVENTS events;
     void on_mouse_click(input::SynMotionEvent &ev) override {
         ev.stop_propagation();
+        if(!enabled)
+            return;
         events.clicked();
         mark_redraw();
     }
 
+    void disable() {
+        enabled = false;
+        mark_redraw();
+    }
+
+    void enable() {
+        enabled = true;
+        mark_redraw();
+    }
+
+    void render() override{
+        ui::Button::render();
+        if(!enabled) {
+            fb->draw_rect(x, y, w, h, color::GRAY_12, true);
+        }
+        //fb->draw_rect(x,y,w,h,BLACK,false);
+    }
+    protected:
+    bool enabled = true;
 };
 
 //basically a reimplementation of ui::Button with a clickable image instead of text
@@ -153,12 +174,9 @@ class EventButton : public ui::Button{
 
 
         void render() override{
-            fb->waveform_mode = WAVEFORM_MODE_GC16;
-            if(!enabled) {
-                fb->draw_rect(x, y, w, h, color::GRAY_12, true);
-            }
+            EventButton::render();
+            //fb->waveform_mode = WAVEFORM_MODE_GC16;
             pixmap->render();
-            //fb->draw_rect(x,y,w,h,BLACK,false);
         }
 
         void on_reflow() override {
@@ -180,19 +198,9 @@ class EventButton : public ui::Button{
             EventButton::on_mouse_click(ev);
         }
 
-        void disable() {
-            enabled = false;
-            mark_redraw();
-        }
-
-        void enable() {
-            enabled = true;
-            mark_redraw();
-        }
 
     private:
         shared_ptr<ui::Pixmap> pixmap;
-        bool enabled = true;
     };
 
     //TODO: style sheets
@@ -267,11 +275,12 @@ class EventButton : public ui::Button{
         void render_inside_fill(float gray = 1.f){
             //draw a rounded box to fill the awkward space between the border and inner content
             drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.cornerRadius,
-                           gray, style.inset + style.cornerRadius);
+                           gray, style.inset + (style.cornerRadius), false,1,1,1,2.f); //extra junk here because C++ doesn't
+                                                                                     //support named parameters and I need to change the alpha
             //draw a rectangle to cover the rest of the inner area
             fb->draw_rect(x + style.inset, y + style.inset,
                           w - style.inset - style.inset, h - style.inset - style.inset,
-                          WHITE, true);
+                          color::from_float(gray), true);
         }
     };
 
