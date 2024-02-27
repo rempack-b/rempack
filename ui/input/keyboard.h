@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "widgets.h"
+#include "widgets/widgets.h"
 
 namespace widgets {
     class KeyboardEvent {

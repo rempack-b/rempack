@@ -6,13 +6,13 @@
 #include <unordered_set>
 #include <utility>
 #include "rempack.h"
-#include "../ui/widgets.h"
+#include "widgets/widgets.h"
 #include "../ui/debug_widgets.h"
-#include "../ui/rempack_widgets.h"
+#include "rempack_widgets.h"
 #include "../opkg/opkg.h"
-#include "../ui/list_box.h"
+#include "widgets/list_box/list_box.h"
 #include "../include/algorithm/boyer_moore.h"
-#include "widget_helpers.h"
+#include "widget_helpers.cpp"
 
 using ListItem = widgets::ListBox::ListItem;
 namespace boyer = strings::boyer_moore;
@@ -203,7 +203,7 @@ ui::Scene buildHomeScene(int width, int height) {
     //full-width horizontal stack underneath the search pane. give it half the remaining height
     auto applicationPane = new ui::HorizontalReflow(0, 0, layout->w, (layout->h - searchPane->h - padding) / 2, scene);
     filterPanel = new widgets::ListBox(0, 0, 300, applicationPane->h, 30);
-    std::vector <std::string> sections;
+    std::vector<std::string> sections;
     pkg.LoadSections(&sections);
     std::sort(sections.begin(), sections.end());
     for (const auto &s: sections)
@@ -214,7 +214,7 @@ ui::Scene buildHomeScene(int width, int height) {
     filterPanel->events.deselected += PLS_DELEGATE(onFilterRemoved);
 
     packagePanel = new widgets::ListBox(padding, 0, layout->w - filterPanel->w - padding, applicationPane->h, 30);
-    std::vector <std::string> packages;
+    std::vector<std::string> packages;
     pkg.LoadPackages(&packages);
     std::sort(packages.begin(), packages.end());
     packagePanel->multiSelect = false;

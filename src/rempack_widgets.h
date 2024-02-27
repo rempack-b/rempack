@@ -4,12 +4,13 @@
 
 #pragma once
 
-#include "widgets.h"
-#include "list_box.h"
-#include "keyboard.h"
-#include "overlay.h"
+#include "widgets/widgets.h"
+#include "widgets/list_box/list_box.h"
+#include "input/keyboard.h"
+#include "overlay/overlay.h"
 #include <utility>
-#include "../opkg/opkg.h"
+#include "opkg.h"
+#include "buttons.h"
 
 namespace widgets {
 

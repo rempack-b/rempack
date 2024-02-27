@@ -6,8 +6,8 @@
 
 #include <rmkit.h>
 #include "../opkg/opkg.h"
-#include "../ui/rempack_widgets.h"
-#include "overlay.h"
+#include "rempack_widgets.h"
+#include "overlay/overlay.h"
 
 namespace widget_helpers {
     namespace internal {
@@ -65,16 +65,17 @@ namespace widget_helpers {
             int dx = padding;
             int dy = padding;
             int dw = w - padding - padding;
-            auto t1 = new ui::Text(dx, dy, dw, utils::line_height(), s1.str());
+            int lineHeight = utils::line_height();
+            auto t1 = new ui::Text(dx, dy, dw, lineHeight, s1.str());
             layout.pack_start(t1);
-            int lh = min((uint) 300, ((labels.size()) * (utils::line_height() + 5)) + 10);
-            auto l1 = new widgets::ListBox(dx, dy + padding, dw, lh, utils::line_height());
+            int lh = min((uint) 300, ((labels.size()) * (lineHeight + 5)) + 10);
+            auto l1 = new widgets::ListBox(dx, dy + padding, dw, lh, lineHeight);
             for (const auto &line: labels) {
                 l1->add(line);
             }
             l1->selectable = false;
             layout.pack_start(l1);
-            auto t2 = new ui::Text(dx, dy + padding + padding, dw, utils::line_height(), s2.str());
+            auto t2 = new ui::Text(dx, dy + padding + padding, dw, lineHeight, s2.str());
             layout.pack_start(t2);
             auto button_bar = ui::HorizontalLayout(0, 0, this->w, 50, this->scene);
             layout.pack_end(button_bar);

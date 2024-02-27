@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "rempack_widgets.h"
+#include "../../src/rempack_widgets.h"
 
 namespace widgets {
     class Overlay : public ui::Dialog {
@@ -19,19 +19,9 @@ namespace widgets {
             children.push_back(border_widget);
         }
 
-        void show() override {
-            if (!this->scene)
-                build_dialog();
-            visible = true;
-            mark_redraw();
-            this->scene->pinned = pinned;
-            ui::MainLoop::show_overlay(this->scene, stack);
-        }
+        void show() override;
 
-        void hide() override {
-            visible = false;
-            ui::MainLoop::hide_overlay(this->scene);
-        }
+        void hide() override;
 
         void render() override {
             border_widget->set_coords(x, y, w, h);
@@ -51,6 +41,20 @@ namespace widgets {
             this->hide();
         }
     };
+
+    void Overlay::show() {
+        if (!this->scene)
+            build_dialog();
+        visible = true;
+        mark_redraw();
+        this->scene->pinned = pinned;
+        ui::MainLoop::show_overlay(this->scene, stack);
+    }
+
+    void Overlay::hide() {
+        visible = false;
+        ui::MainLoop::hide_overlay(this->scene);
+    }
 
 
 }

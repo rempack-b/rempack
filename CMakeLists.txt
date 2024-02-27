@@ -71,10 +71,13 @@ add_executable(${PROJECT_NAME} src/main.cpp
         ui/debug_widgets.h
         opkg/opkg.h
         opkg/opkg.cpp
-        ui/rempack_widgets.h
+        src/rempack_widgets.h
         ui/text_helpers.h
-        ui/list_box.h
+        ui/widgets/list_box/list_box.h
         include/semver.h
+        ui/widgets/list_box/list_box.cpp
+        ui/widgets/widgets.cpp
+        ui/graphic_utils.h
 )
 target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
