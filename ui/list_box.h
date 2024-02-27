@@ -6,6 +6,7 @@
 
 #include <unordered_set>
 #include "widgets.h"
+
 namespace widgets {
     /*
      * Displays a list of items.
@@ -68,8 +69,8 @@ namespace widgets {
         bool multiSelect = true; //allow selecting more than one entry
 
         int pageSize() {
-            auto size = (int)floor(float(h - padding - padding) / float(itemHeight + padding));
-            if(size < (int)_sortedView.size())   //if we have more items than will fit on one page,
+            auto size = (int) floor(float(h - padding - padding) / float(itemHeight + padding));
+            if (size < (int) _sortedView.size())   //if we have more items than will fit on one page,
                 size--;                          //reserve at least one line of space at the bottom of the view for the nav elements
             return size;
         }
@@ -78,8 +79,8 @@ namespace widgets {
             return pageOffset + 1;
         }
 
-        int maxPages(){
-            return (int)ceil((float)_sortedView.size() / (float)pageSize());
+        int maxPages() {
+            return (int) ceil((float) _sortedView.size() / (float) pageSize());
         }
 
         //please call mark_redraw() on this widget after editing contents or selections
@@ -88,12 +89,12 @@ namespace widgets {
 
         ListBox(int x, int y, int w, int h, int itemHeight) : RoundCornerWidget(x, y, w, h, RoundCornerStyle()) {
             this->itemHeight = itemHeight;
-            _pageLabel = make_shared<ui::Text>(0,0,w,itemHeight,"");
+            _pageLabel = make_shared<ui::Text>(0, 0, w, itemHeight, "");
 
-            _navLL = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_fast_arrow_left_png));
-            _navL = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_nav_arrow_left_png));
-            _navR = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_nav_arrow_right_png));
-            _navRR = make_shared<ImageButton>(0,0,itemHeight,itemHeight,ICON(assets::png_fast_arrow_right_png));
+            _navLL = make_shared<ImageButton>(0, 0, itemHeight, itemHeight, ICON(assets::png_fast_arrow_left_png));
+            _navL = make_shared<ImageButton>(0, 0, itemHeight, itemHeight, ICON(assets::png_nav_arrow_left_png));
+            _navR = make_shared<ImageButton>(0, 0, itemHeight, itemHeight, ICON(assets::png_nav_arrow_right_png));
+            _navRR = make_shared<ImageButton>(0, 0, itemHeight, itemHeight, ICON(assets::png_fast_arrow_right_png));
             _navLL->hide();
             _navL->hide();
             _navR->hide();
@@ -112,13 +113,13 @@ namespace widgets {
             layout_buttons();
         }
 
-        ListBox(int x, int y, int w, int h, int itemHeight, const vector<string>& items): ListBox(x,y,w,h,itemHeight) {
-            for(const auto &s: items){
+        ListBox(int x, int y, int w, int h, int itemHeight, const vector<string> &items) : ListBox(x, y, w, h,                                                                                                   itemHeight) {
+            for (const auto &s: items) {
                 this->add(s);
             }
         }
 
-        shared_ptr<ListItem> add(const string& label, const std::any& object = nullptr) {
+        shared_ptr<ListItem> add(const string &label, const std::any &object = nullptr) {
             auto item = make_shared<ListItem>(label, object);
             item->_widget = make_shared<ui::Text>(x, y, w, itemHeight, label);
             //TODO: style sheets
@@ -130,11 +131,11 @@ namespace widgets {
             return item;
         }
 
-        bool remove(const string& label) {
+        bool remove(const string &label) {
             //sure, you could use std::find but C++ Lambdas are an affront to all that is good in this world
             int i = 0;
             shared_ptr<ListItem> item = nullptr;
-            for (; i < (int)contents.size(); i++) {
+            for (; i < (int) contents.size(); i++) {
                 auto ti = contents[i];
                 if (label == ti->label) {
                     item = ti;
@@ -197,14 +198,14 @@ namespace widgets {
         //check the Y position relative to top of widget, divide by itemHeight
         void on_mouse_click(input::SynMotionEvent &ev) override {
             ev.stop_propagation();
-            if(!selectable)
+            if (!selectable)
                 return;
             auto hgt = itemHeight + padding;
             auto sy = ev.y - this->y;
             auto shgt = sy / hgt;
             int idx = floor(shgt);
             //printf("Click at %d,%d: computed offset %d: displayed %d\n", ev.x, ev.y, idx, displayed_items());
-            if (idx >= (int)_currentView.size())
+            if (idx >= (int) _currentView.size())
                 return;
             selectIndex(idx);
             mark_redraw();
@@ -254,6 +255,7 @@ namespace widgets {
             _navR->mark_redraw();
             _navRR->mark_redraw();
         }
+
     private:
         //TODO: style sheets
         int itemHeight;
@@ -261,8 +263,8 @@ namespace widgets {
 
         int pageOffset = 0;
 
-        void updateControlStates(){
-            if(maxPages() == 1){
+        void updateControlStates() {
+            if (maxPages() == 1) {
                 _navLL->hide();
                 _navL->hide();
                 _navR->hide();
@@ -270,30 +272,27 @@ namespace widgets {
                 _pageLabel->hide();
                 return;
             }
-            if(maxPages() > 2) {
+            if (maxPages() > 2) {
                 _navLL->show();
                 _navRR->show();
-            }
-            else{
+            } else {
                 _navLL->hide();
                 _navRR->hide();
             }
             _navL->show();
             _navR->show();
             _pageLabel->show();
-            if(currentPage() == 1){
+            if (currentPage() == 1) {
                 _navLL->disable();
                 _navL->disable();
                 _navR->enable();
                 _navRR->enable();
-            }
-            else if (currentPage() == maxPages()){
+            } else if (currentPage() == maxPages()) {
                 _navLL->enable();
                 _navL->enable();
                 _navR->disable();
                 _navRR->disable();
-            }
-            else{
+            } else {
                 _navLL->enable();
                 _navL->enable();
                 _navR->enable();
@@ -302,7 +301,7 @@ namespace widgets {
             layout_buttons();
         }
 
-        void updatePageDisplay(){
+        void updatePageDisplay() {
             stringstream ss;
             ss << "[ " << currentPage() << '/' << maxPages() << " ]";
             _pageLabel->text = ss.str();
@@ -310,23 +309,25 @@ namespace widgets {
             updateControlStates();
         }
 
-        void LL_CLICK(void* v){
+        void LL_CLICK(void *v) {
             pageOffset = max(0, pageOffset - (maxPages() > 10 ? 10 : 5));
             updatePageDisplay();
             mark_redraw();
         }
 
-        void L_CLICK(void* v) {
+        void L_CLICK(void *v) {
             pageOffset--;
             updatePageDisplay();
             mark_redraw();
         }
-        void R_CLICK(void* v){
+
+        void R_CLICK(void *v) {
             pageOffset++;
             updatePageDisplay();
             mark_redraw();
         }
-        void RR_CLICK(void* v){
+
+        void RR_CLICK(void *v) {
             pageOffset = min(pageOffset + (maxPages() > 10 ? 10 : 5), maxPages() - 1);
             updatePageDisplay();
             mark_redraw();
@@ -350,7 +351,7 @@ namespace widgets {
                 }
             }
 
-            if(sortPredicate)
+            if (sortPredicate)
                 std::sort(_sortedView.begin(), _sortedView.end(), sortPredicate);
             else
                 std::sort(_sortedView.begin(), _sortedView.end());
@@ -368,7 +369,7 @@ namespace widgets {
         }
 
         void selectIndex(int index) {
-            if (index >= (int)_currentView.size()) {
+            if (index >= (int) _currentView.size()) {
                 fprintf(stderr, "selectIndex out of bounds: idx[%d]\n", index);
                 return;
             }

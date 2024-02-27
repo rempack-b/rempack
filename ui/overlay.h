@@ -5,6 +5,7 @@
 #pragma once
 
 #include "rempack_widgets.h"
+
 namespace widgets {
     class Overlay : public ui::Dialog {
     private:
@@ -19,7 +20,7 @@ namespace widgets {
         }
 
         void show() override {
-            if(!this->scene)
+            if (!this->scene)
                 build_dialog();
             visible = true;
             mark_redraw();
@@ -33,7 +34,7 @@ namespace widgets {
         }
 
         void render() override {
-            border_widget->set_coords(x,y,w,h);
+            border_widget->set_coords(x, y, w, h);
             border_widget->render_inside_fill();
         }
 
@@ -45,7 +46,7 @@ namespace widgets {
             this->dirty = 1;
         }
 
-        void on_button_selected(std::string s) override{
+        void on_button_selected(std::string s) override {
             ui::Dialog::on_button_selected(s);
             this->hide();
         }

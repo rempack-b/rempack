@@ -16,6 +16,7 @@
 
 using ListItem = widgets::ListBox::ListItem;
 namespace boyer = strings::boyer_moore;
+
 ui::Scene buildHomeScene(int width, int height);
 
 opkg pkg;
@@ -36,7 +37,7 @@ void Rempack::startApp() {
     ui::MainLoop::refresh();
     //ui::MainLoop::redraw();
 
-    while(true){
+    while (true) {
         ui::MainLoop::main();
         ui::MainLoop::redraw();
         fb->waveform_mode = WAVEFORM_MODE_DU;
@@ -63,21 +64,21 @@ bool packageFilterDelegate(const shared_ptr<ListItem> &item) {
     bool visible = false;
     if (!_filters.empty() && _filters.find(pk->Section) == _filters.end())
         return false;
-    if(!_filterOpts.Licenses.empty() && !_filterOpts.Licenses.find(pk->License)->second)
+    if (!_filterOpts.Licenses.empty() && !_filterOpts.Licenses.find(pk->License)->second)
         return false;
-    if(!_filterOpts.Repos.empty() && !_filterOpts.Repos.find(pk->Repo)->second)
+    if (!_filterOpts.Repos.empty() && !_filterOpts.Repos.find(pk->Repo)->second)
         return false;
-    if(!((_filterOpts.Installed && pk->IsInstalled()) ||
-    (_filterOpts.NotInstalled && pk->State == package::NotInstalled)))
+    if (!((_filterOpts.Installed && pk->IsInstalled()) ||
+          (_filterOpts.NotInstalled && pk->State == package::NotInstalled)))
         return false;   //yes, I feel bad
     // if(_filterOpts.Upgradable && !pk->_is_updatable)
     //    return false;
-    if(!_searchQuery.empty()) {
+    if (!_searchQuery.empty()) {
         boyer::pattern pat;
         boyer::init_pattern(_searchQuery, pat);
         std::vector<size_t> indexes = boyer::search(pk->Package, pat);
         if (indexes.empty()) {
-            if(!_filterOpts.SearchDescription)
+            if (!_filterOpts.SearchDescription)
                 return false;
             indexes = boyer::search(pk->Description, pat);
             if (indexes.empty())
@@ -86,25 +87,30 @@ bool packageFilterDelegate(const shared_ptr<ListItem> &item) {
     }
     return true;
 }
-void searchQueryUpdate(string s){
+
+void searchQueryUpdate(string s) {
     _searchQuery = std::move(s);
     packagePanel->mark_redraw();
 }
-bool sectionFilterDelegate(const shared_ptr<ListItem> &item){
-    for(auto &[r,s]: _filterOpts.Repos){
-        if(s && CONTAINS(pkg.sections_by_repo[item->label], r))
+
+bool sectionFilterDelegate(const shared_ptr<ListItem> &item) {
+    for (auto &[r, s]: _filterOpts.Repos) {
+        if (s && CONTAINS(pkg.sections_by_repo[item->label], r))
             return true;
     }
     return false;
 }
+
 void onFilterAdded(shared_ptr<ListItem> item) {
     _filters.emplace(item->label);
     packagePanel->mark_redraw();
 }
+
 void onFilterRemoved(shared_ptr<ListItem> item) {
     _filters.erase(item->label);
     packagePanel->mark_redraw();
 }
+
 void onPackageSelect(shared_ptr<ListItem> item) {
     auto pk = any_cast<shared_ptr<package>>(item->object);
     printf("Package selected: %s\n", pk->Package.c_str());
@@ -114,6 +120,7 @@ void onPackageSelect(shared_ptr<ListItem> item) {
     displayBox->set_text(opkg::FormatPackage(pk));
     displayBox->mark_redraw();
 }
+
 void onPackageDeselect(shared_ptr<ListItem> item) {
     auto pk = any_cast<shared_ptr<package>>(item->object);
     printf("Package deselected: %s\n", pk->Package.c_str());
@@ -123,35 +130,41 @@ void onPackageDeselect(shared_ptr<ListItem> item) {
     displayBox->set_text("");
     displayBox->mark_redraw();
 }
-void onFiltersChanged(widgets::FilterOptions &options){
+
+void onFiltersChanged(widgets::FilterOptions &options) {
     _filterOpts = options;
     filterPanel->mark_redraw();
     packagePanel->mark_redraw();
 }
-void markInstall(shared_ptr<package> pkg){
-    if(pkg->IsInstalled())
+
+void markInstall(shared_ptr<package> pkg) {
+    if (pkg->IsInstalled())
         return;
-    if(_menuData->PendingInstall.emplace(pkg->Package).second)
-        for(auto const &spk: pkg->Depends)
+    if (_menuData->PendingInstall.emplace(pkg->Package).second)
+        for (auto const &spk: pkg->Depends)
             markInstall(spk);
 }
-void onInstallClick(void*){
+
+void onInstallClick(void *) {
     //auto str = pkg.formatDependencyTree(_selected, false);
     //cout << str;
     //auto m = new widgets::ModalOverlay(20,20,1200,1400,{widgets::ModalOverlay::ModalButton::OK}, str);
-    auto m = new widget_helpers::InstallDialog(500,500,600,800,vector<shared_ptr<package>>{_selected});
+    auto m = new widget_helpers::InstallDialog(500, 500, 600, 800, vector<shared_ptr<package>>{_selected});
     //auto m = new ui::InfoDialog(50,50,200,200);
     //m->set_title("installing your mom");
     m->show();
     _menuData->PendingInstall.emplace(_selected->Package);
 }
-void onUninstallClick(void*){
+
+void onUninstallClick(void *) {
     _menuData->PendingRemove.emplace(_selected->Package);
 }
-void onDownloadClick(void*){
+
+void onDownloadClick(void *) {
 
 }
-void onPreviewClick(void*){
+
+void onPreviewClick(void *) {
 
 }
 
@@ -161,36 +174,36 @@ ui::Scene buildHomeScene(int width, int height) {
     auto scene = ui::make_scene();
 
     //vertical stack that takes up the whole screen
-    auto layout = new ui::VerticalReflow(padding, padding, width - padding*2, height - padding*2, scene);
+    auto layout = new ui::VerticalReflow(padding, padding, width - padding * 2, height - padding * 2, scene);
 
     pkg.InitializeRepositories();
     /* Search + menus */
     //short full-width pane containing search and menus
     auto searchPane = new ui::HorizontalReflow(0, 0, layout->w, 80, scene);
 
-    _filterOpts ={
+    _filterOpts = {
             .Installed = true,
             .Upgradable = true,
             .NotInstalled = true,
     };
-    for(auto &r : pkg.repositories){
+    for (auto &r: pkg.repositories) {
         _filterOpts.Repos.emplace(r, r != "entware");   //hide entware by default, there's so many openwrt packages it drowns out toltec
     }
-    auto filterButton = new widgets::FilterButton(0,0,60,60, _filterOpts);
+    auto filterButton = new widgets::FilterButton(0, 0, 60, 60, _filterOpts);
     filterButton->events.updated += onFiltersChanged;
     _menuData = new widgets::MenuData;
-    auto settingButton = new widgets::ConfigButton(padding*2, 0, 60, 60, _menuData);
-    auto searchBox = new widgets::SearchBox(padding, 0, layout->w - 120 - padding*2, 60, widgets::RoundCornerStyle());
-    searchBox->events.done += PLS_DELEGATE(searchQueryUpdate);
+    auto settingButton = new widgets::ConfigButton(padding * 2, 0, 60, 60, _menuData);
+    auto searchBox = new widgets::SearchBox(padding, 0, layout->w - 120 - padding * 2, 60, widgets::RoundCornerStyle());
+    searchBox->events.done += searchQueryUpdate;
     searchPane->pack_start(filterButton);
     searchPane->pack_start(searchBox);
     searchPane->pack_start(settingButton);
 
     /* Applications */
     //full-width horizontal stack underneath the search pane. give it half the remaining height
-    auto applicationPane = new ui::HorizontalReflow(0, 0, layout->w, (layout->h - searchPane->h - padding)/2, scene);
+    auto applicationPane = new ui::HorizontalReflow(0, 0, layout->w, (layout->h - searchPane->h - padding) / 2, scene);
     filterPanel = new widgets::ListBox(0, 0, 300, applicationPane->h, 30);
-    std::vector<std::string> sections;
+    std::vector <std::string> sections;
     pkg.LoadSections(&sections);
     std::sort(sections.begin(), sections.end());
     for (const auto &s: sections)
@@ -201,7 +214,7 @@ ui::Scene buildHomeScene(int width, int height) {
     filterPanel->events.deselected += PLS_DELEGATE(onFilterRemoved);
 
     packagePanel = new widgets::ListBox(padding, 0, layout->w - filterPanel->w - padding, applicationPane->h, 30);
-    std::vector<std::string> packages;
+    std::vector <std::string> packages;
     pkg.LoadPackages(&packages);
     std::sort(packages.begin(), packages.end());
     packagePanel->multiSelect = false;
@@ -216,7 +229,7 @@ ui::Scene buildHomeScene(int width, int height) {
     packagePanel->events.selected += PLS_DELEGATE(onPackageSelect);
     packagePanel->events.deselected += PLS_DELEGATE(onPackageDeselect);
 
-    displayBox = new widgets::PackageInfoPanel(0,0,applicationPane->w,applicationPane->h, widgets::RoundCornerStyle());
+    displayBox = new widgets::PackageInfoPanel(0, 0, applicationPane->w, applicationPane->h, widgets::RoundCornerStyle());
 
     displayBox->events.install += PLS_DELEGATE(onInstallClick);
     displayBox->events.uninstall += PLS_DELEGATE(onUninstallClick);

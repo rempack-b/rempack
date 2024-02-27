@@ -6,7 +6,7 @@
 
 #include "widgets.h"
 
-namespace widgets{
+namespace widgets {
     class GradientGizmo : public ui::Widget {
     public:
         GradientGizmo(int x, int y, int w, int h, float expA, float coefB, bool border = true) : Widget(x, y, w, h) {
@@ -41,9 +41,9 @@ namespace widgets{
 
     class RoundCornerEditor : public ui::Widget {
     public:
-        RoundCornerEditor(int x, int y, int w, int h, RoundedTextInput *target) : ui::Widget(x,y,w,h) {
+        RoundCornerEditor(int x, int y, int w, int h, RoundedTextInput *target) : ui::Widget(x, y, w, h) {
             this->target = target;
-            this->style= target->style;
+            this->style = target->style;
             int padding = 20;
             //add a few gradient previews
             auto _x = x;

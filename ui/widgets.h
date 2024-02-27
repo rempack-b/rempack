@@ -76,7 +76,7 @@ namespace widgets {
             auto dc = abs(grayfendColor - grayfColor) / (float) stroke;
             for (uint si = 0; si <= stroke; si++) {
                 auto fc = utils::sigmoid(grayfColor + dc * si, expA, coefB);
-                if(fc < alphaMask)
+                if (fc < alphaMask)
                     drawRoundedCorners(x0, y0, ox, oy, radius + si, fb, fc);
             }
         }
@@ -107,7 +107,7 @@ namespace widgets {
             float dc = abs(grayfendColor - grayfColor) / (float) stroke;
             for (int i = 0; i <= stroke; i++) {
                 auto fc = utils::sigmoid(grayfColor + (dc * i), expA, coefB);
-                if(fc>=alphaThreshold)
+                if (fc >= alphaThreshold)
                     continue;   //don't break, the curve may change later in the stroke
                 auto color = color::from_float(fc);
                 //left
@@ -122,46 +122,48 @@ namespace widgets {
         }
     }
 
-class EventButton : public ui::Button{
+    class EventButton : public ui::Button {
     public:
-    EventButton(int x, int y, int w, int h, string text = "") : Button(x, y, w, h, text){}
+        EventButton(int x, int y, int w, int h, string text = "") : Button(x, y, w, h, text) {}
 
-    PLS_DEFINE_SIGNAL(BUTTON_EVENT, void*);
+        PLS_DEFINE_SIGNAL(BUTTON_EVENT, void*);
 
-    class BUTTON_EVENTS {
-    public:
-        BUTTON_EVENT clicked;
-    };
+        class BUTTON_EVENTS {
+        public:
+            BUTTON_EVENT clicked;
+        };
 
-    BUTTON_EVENTS events;
-    void on_mouse_click(input::SynMotionEvent &ev) override {
-        ev.stop_propagation();
-        if(!enabled)
-            return;
-        events.clicked();
-        mark_redraw();
-    }
+        BUTTON_EVENTS events;
 
-    void disable() {
-        enabled = false;
-        mark_redraw();
-    }
-
-    void enable() {
-        enabled = true;
-        mark_redraw();
-    }
-
-    void render() override{
-        ui::Button::render();
-        if(!enabled) {
-            fb->draw_rect(x, y, w, h, color::GRAY_12, true);
+        void on_mouse_click(input::SynMotionEvent &ev) override {
+            ev.stop_propagation();
+            if (!enabled)
+                return;
+            events.clicked();
+            mark_redraw();
         }
-        //fb->draw_rect(x,y,w,h,BLACK,false);
-    }
+
+        void disable() {
+            enabled = false;
+            mark_redraw();
+        }
+
+        void enable() {
+            enabled = true;
+            mark_redraw();
+        }
+
+        void render() override {
+            ui::Button::render();
+            if (!enabled) {
+                fb->draw_rect(x, y, w, h, color::GRAY_12, true);
+            }
+            //fb->draw_rect(x,y,w,h,BLACK,false);
+        }
+
     protected:
-    bool enabled = true;
-};
+        bool enabled = true;
+    };
 
 //basically a reimplementation of ui::Button with a clickable image instead of text
     class ImageButton : public EventButton {
@@ -173,7 +175,7 @@ class EventButton : public ui::Button{
         }
 
 
-        void render() override{
+        void render() override {
             EventButton::render();
             //fb->waveform_mode = WAVEFORM_MODE_GC16;
             pixmap->render();
@@ -181,8 +183,8 @@ class EventButton : public ui::Button{
 
         void on_reflow() override {
             //pixmap->undraw();
-            auto dw = min(w,h);
-            auto dx = x+(w/2) - (dw/2);
+            auto dw = min(w, h);
+            auto dx = x + (w / 2) - (dw / 2);
             pixmap->set_coords(dx, y, dw, dw);
             //pixmap->icon.width  = dw;
             //pixmap->icon.height = dw;
@@ -193,7 +195,7 @@ class EventButton : public ui::Button{
 
         void on_mouse_click(input::SynMotionEvent &ev) override {
             ev.stop_propagation();
-            if(!enabled)
+            if (!enabled)
                 return;
             EventButton::on_mouse_click(ev);
         }
@@ -235,11 +237,11 @@ class EventButton : public ui::Button{
             this->style = style;
         };
         RoundCornerStyle style;
-            uint16_t undraw_color = WHITE;
+        uint16_t undraw_color = WHITE;
 
-            //TODO: this still isn't quite right
+        //TODO: this still isn't quite right
         void undraw() override {
-                return;
+            return;
             //top
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
                           y + style.inset - style.cornerRadius - style.borderThickness,
@@ -272,11 +274,11 @@ class EventButton : public ui::Button{
                            style.expA, style.expB);
         }
 
-        void render_inside_fill(float gray = 1.f){
+        void render_inside_fill(float gray = 1.f) {
             //draw a rounded box to fill the awkward space between the border and inner content
             drawRoundedBox(x, y, w, h, style.cornerRadius, fb, style.cornerRadius,
-                           gray, style.inset + (style.cornerRadius), false,1,1,1,2.f); //extra junk here because C++ doesn't
-                                                                                     //support named parameters and I need to change the alpha
+                           gray, style.inset + (style.cornerRadius), false, 1, 1, 1, 2.f); //extra junk here because C++ doesn't support
+            //named parameters and I need to change the alpha
             //draw a rectangle to cover the rest of the inner area
             fb->draw_rect(x + style.inset, y + style.inset,
                           w - style.inset - style.inset, h - style.inset - style.inset,
@@ -284,60 +286,63 @@ class EventButton : public ui::Button{
         }
     };
 
-    class RoundImageButton : public ImageButton{
+    class RoundImageButton : public ImageButton {
     public:
 
         shared_ptr<RoundCornerWidget> border;
-        RoundImageButton(int x, int y, int w, int h, icons::Icon icon, RoundCornerStyle style): ImageButton(x,y,w,h,icon){
-            border = make_shared<RoundCornerWidget>(x,y,w,h,style);
+
+        RoundImageButton(int x, int y, int w, int h, icons::Icon icon, RoundCornerStyle style) : ImageButton(x, y, w, h, icon) {
+            border = make_shared<RoundCornerWidget>(x, y, w, h, style);
             children.push_back(border);
         }
-        void on_reflow()override{
-            border->set_coords(x,y,w,h);
+
+        void on_reflow() override {
+            border->set_coords(x, y, w, h);
             border->mark_redraw();
             ImageButton::on_reflow();
         }
     };
 
     //same as ui::TextInput except it draws fancy rounded corners
-class RoundedTextInput: public ui::TextInput{
-public:
-RoundCornerStyle style;
-shared_ptr<RoundCornerWidget> border;
-    RoundedTextInput(int x, int y, int w, int h, RoundCornerStyle style, string text = ""): ui::TextInput(x,y,w,h,std::move(text)){
-        //TODO: this is so bad
-        //TODO: style sheets
-        ui::TextInput::style.valign = ui::Style::MIDDLE;
-        ui::TextInput::style.justify = ui::Style::LEFT;
-        this->style = style;
-        border = make_shared<RoundCornerWidget>(x,y,w,h,style);
-        children.push_back(border);
-    }
-    void undraw() override {
-        auto sx = x - style.cornerRadius - style.borderThickness + style.inset;
-        auto sy = y - style.cornerRadius - style.borderThickness + style.inset;
-        auto dx = sx + w + style.cornerRadius + style.borderThickness + style.inset;
-        auto dy = sy + h + style.cornerRadius + style.borderThickness + style.inset;
-        fb->draw_rect(sx, sy, dx, dy, WHITE, true);
-    }
-     
-    void render() override {
-        fb->waveform_mode = WAVEFORM_MODE_GC16;
-        ui::TextInput::render();
-    }
+    class RoundedTextInput : public ui::TextInput {
+    public:
+        RoundCornerStyle style;
+        shared_ptr<RoundCornerWidget> border;
 
-    void on_reflow()override{
-        border->set_coords(x,y,w,h);
-        border->mark_redraw();
-    }
+        RoundedTextInput(int x, int y, int w, int h, RoundCornerStyle style, string text = "") : ui::TextInput(x, y, w, h, std::move(text)) {
+            //TODO: style sheets
+            ui::TextInput::style.valign = ui::Style::MIDDLE;
+            ui::TextInput::style.justify = ui::Style::LEFT;
+            this->style = style;
+            border = make_shared<RoundCornerWidget>(x, y, w, h, style);
+            children.push_back(border);
+        }
 
-    void render_border() override{
-        border->style = style;
-        //stop parent class from rendering its border
-    }
-};
+        void undraw() override {
+            auto sx = x - style.cornerRadius - style.borderThickness + style.inset;
+            auto sy = y - style.cornerRadius - style.borderThickness + style.inset;
+            auto dx = sx + w + style.cornerRadius + style.borderThickness + style.inset;
+            auto dy = sy + h + style.cornerRadius + style.borderThickness + style.inset;
+            fb->draw_rect(sx, sy, dx, dy, WHITE, true);
+        }
 
-   class LabeledRangeInput : public ui::Widget {
+        void render() override {
+            fb->waveform_mode = WAVEFORM_MODE_GC16;
+            ui::TextInput::render();
+        }
+
+        void on_reflow() override {
+            border->set_coords(x, y, w, h);
+            border->mark_redraw();
+        }
+
+        void render_border() override {
+            border->style = style;
+            //stop parent class from rendering its border
+        }
+    };
+
+    class LabeledRangeInput : public ui::Widget {
     public:
         enum LabelPosition {
             LEFT, TOP
@@ -358,9 +363,9 @@ shared_ptr<RoundCornerWidget> border;
             h = range->y + range->h - y;
         }
 
-        void mark_redraw() override{
+        void mark_redraw() override {
             range->mark_redraw();
-            if(label != nullptr)
+            if (label != nullptr)
                 label->mark_redraw();
         }
 
