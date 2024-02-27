@@ -10,7 +10,7 @@
 #include "overlay/overlay.h"
 #include <utility>
 #include "opkg.h"
-#include "buttons.h"
+#include "../ui/widgets/buttons.h"
 
 namespace widgets {
 

@@ -65,19 +65,16 @@ find_package(ZLIB)
 
 add_executable(${PROJECT_NAME} src/main.cpp
         src/rempack.cpp
-        "$<IF:$<BOOL:${RMKIT_EXTERN}>,${RMKIT_FILE},extern/rmkit.h>"
+        #"$<IF:$<BOOL:${RMKIT_EXTERN}>,${RMKIT_FILE},extern/rmkit.h>"
         #${RMKIT_FILE}
         assets/icons/icons_embed.h
         ui/debug_widgets.h
-        opkg/opkg.h
         opkg/opkg.cpp
-        src/rempack_widgets.h
         ui/text_helpers.h
-        ui/widgets/list_box/list_box.h
         include/semver.h
         ui/widgets/list_box/list_box.cpp
         ui/widgets/widgets.cpp
-        ui/graphic_utils.h
+        ui/widgets/graphic_utils.h
 )
 target_compile_options(${PROJECT_NAME}
         PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
@@ -90,6 +87,20 @@ target_link_options(${PROJECT_NAME}
 #they're here for convenience (you can never forget them) and also to ensure
 #they appear early enough in the linking stage
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+        #RMKIT_IMPLEMENTATION
+        #STB_IMAGE_IMPLEMENTATION
+        #STB_IMAGE_RESIZE_IMPLEMENTATION
+        #STB_IMAGE_WRITE_IMPLEMENTATION
+        #STB_TRUETYPE_IMPLEMENTATION
+        #when building for native hardware, REMARKABLE must be defined
+        $<$<STREQUAL:${TARGET_PLATFORM},rm>:REMARKABLE>
+        #debug builds require an external font file. I've provided one for you in /include
+        $<$<STREQUAL:${TARGET_PLATFORM},x86>:FONT_EMBED_H="font_embed.h">
+        )
+#see also: rm-toolchain.cmake
+
+add_library(rmkit extern/rmkit.cpp)
+target_compile_definitions(rmkit PRIVATE
         RMKIT_IMPLEMENTATION
         STB_IMAGE_IMPLEMENTATION
         STB_IMAGE_RESIZE_IMPLEMENTATION
@@ -99,10 +110,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<STREQUAL:${TARGET_PLATFORM},rm>:REMARKABLE>
         #debug builds require an external font file. I've provided one for you in /include
         $<$<STREQUAL:${TARGET_PLATFORM},x86>:FONT_EMBED_H="font_embed.h">
-        )
-#see also: rm-toolchain.cmake
-
-target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB
+                        PRIVATE rmkit)
 
 #add_library(rmkit ${RMKIT_FILE})
 #set_target_properties(rmkit PROPERTIES LINKER_LANGUAGE CXX)
