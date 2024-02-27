@@ -66,7 +66,7 @@ public:
         int dw = w - padding - padding;
         auto t1 = new ui::Text(dx, dy, dw, utils::line_height(), s1.str());
         layout.pack_start(t1);
-        int lh = min((uint)300, (labels.size() )* (utils::line_height()+6));
+        int lh = min((uint)300, ((labels.size() )* (utils::line_height()+5))+10);
         auto l1 = new widgets::ListBox(dx, dy+padding, dw, lh, utils::line_height());
         for (const auto &line: labels) {
             l1->add(line);

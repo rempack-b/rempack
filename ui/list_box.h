@@ -68,7 +68,7 @@ namespace widgets {
         bool multiSelect = true; //allow selecting more than one entry
 
         int pageSize() {
-            auto size = (int)ceil(float(h - padding - padding) / float(itemHeight + padding));
+            auto size = (int)floor(float(h - padding - padding) / float(itemHeight + padding));
             if(size < (int)_sortedView.size())   //if we have more items than will fit on one page,
                 size--;                          //reserve at least one line of space at the bottom of the view for the nav elements
             return size;
@@ -222,13 +222,13 @@ namespace widgets {
             stringstream lss;
             lss << "[ " << maxPages() << "/" << maxPages() << " ]";
             auto [lbx, lby] = utils::measure_string(lss.str(), ui::Widget::style.font_size);
-            auto lbw = lbx + padding;
+            auto lbw = lbx;// + padding;
             _pageLabel->set_coords(bx, by, lbw, itemHeight);
             _pageLabel->style.valign = ui::Style::VALIGN::BOTTOM;
             bx += lbw + padding;
             //this width calculation is wrong for very narrow windows
             //I can't be bothered to fix it right now
-            auto buttonWidth = ((w - lbw - padding) / 5);
+            auto buttonWidth = ((w - lbw - padding - padding) / 5);
             if (maxPages() <= 2)
                 buttonWidth *= 2;
             buttonWidth = min(buttonWidth, 200);
@@ -357,26 +357,9 @@ namespace widgets {
 
             auto offset = pageOffset * pageSize();
             auto count = std::min((int) pageSize(), (int) _sortedView.size() - offset);
-            auto cit = _currentView.begin();
+            _currentView.clear();
             for (int i = offset; i < offset + count; i++) {
-                if (cit == _currentView.end()) {
-                    _currentView.push_back(_sortedView[i]);
-                    cit = _currentView.end();
-                    continue;
-                }
-                auto citem = *cit;
-                if (citem == _sortedView[i]) {
-                    cit++;
-                    continue;
-                }
-                (*cit) = _sortedView[i];
-                cit++;
-            }
-            if (cit !=
-                _currentView.end()) { //there are more elements in the view than are available for the current page
-                for (auto cbt = cit; cbt != _currentView.end(); cbt++)
-                    (*cbt)->_widget->undraw();
-                _currentView.erase(cit, _currentView.end());
+                _currentView.push_back(_sortedView[i]);
             }
 
             pageOffset = min(maxPages() - 1, pageOffset);
