@@ -18,27 +18,37 @@ set(RMKIT_DIR "${CMAKE_BINARY_DIR}/include/rmkit")
 set(HASH_FILE "${RMKIT_DIR}/sha256sum.txt")
 set(RMKIT_FILE "${RMKIT_DIR}/rmkit.h")
 
-#don't hit the server if we already have the file
-if(NOT EXISTS ${RMKIT_FILE})
-    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/include/rmkit)
-    file(DOWNLOAD https://build.rmkit.dev/master/latest/rm/rmkit.h "${RMKIT_FILE}")
-    #verify downloaded file against posted hashes
-    file(DOWNLOAD https://build.rmkit.dev/master/latest/rm/sha256sum.txt "${HASH_FILE}")
-    file(READ "${HASH_FILE}" HASH_LINES)
-    #extract the hash from the line ending with rmkit.h
-    string(REGEX MATCH "([A-Fa-f0-9]+)[\\t\\ ]+[a-zA-Z0-9/\\]+rmkit\\.h" _ "${HASH_LINES}")
-    set(HASH_VALUE "${CMAKE_MATCH_1}")
-    #check the hashes
-    file(READ "${RMKIT_FILE}" RMKIT_CONTENT)
-    string(SHA256 RMKIT_CONTENT_HASH "${RMKIT_CONTENT}")
-    file(REMOVE ${HASH_FILE})
+#use this if you're building against a custom version of rmkit.h
+set(RMKIT_EXTERN "${CMAKE_SOURCE_DIR}/extern/rmkit.h")
 
-    if(NOT "${RMKIT_CONTENT_HASH}" STREQUAL "${HASH_VALUE}")
-        message(FATAL_ERROR "Hash verification failed for rmkit.h!")
-        file(REMOVE ${RKIT_FILE})
-    #else()
-        #message("Hash verification successful for rmkit.h!")
+if(NOT DEFINED RMKIT_EXTERN)
+    #don't hit the server if we already have the file
+    if(NOT EXISTS ${RMKIT_FILE})
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/include/rmkit)
+        file(DOWNLOAD https://build.rmkit.dev/master/latest/rm/rmkit.h "${RMKIT_FILE}")
+        #verify downloaded file against posted hashes
+        file(DOWNLOAD https://build.rmkit.dev/master/latest/rm/sha256sum.txt "${HASH_FILE}")
+        file(READ "${HASH_FILE}" HASH_LINES)
+        #extract the hash from the line ending with rmkit.h
+        string(REGEX MATCH "([A-Fa-f0-9]+)[\\t\\ ]+[a-zA-Z0-9/\\]+rmkit\\.h" _ "${HASH_LINES}")
+        set(HASH_VALUE "${CMAKE_MATCH_1}")
+        #check the hashes
+        file(READ "${RMKIT_FILE}" RMKIT_CONTENT)
+        string(SHA256 RMKIT_CONTENT_HASH "${RMKIT_CONTENT}")
+        file(REMOVE ${HASH_FILE})
+
+        if(NOT "${RMKIT_CONTENT_HASH}" STREQUAL "${HASH_VALUE}")
+            message(FATAL_ERROR "Hash verification failed for rmkit.h!")
+            file(REMOVE ${RKIT_FILE})
+        else()
+            message("Hash verification successful for rmkit.h!")
+        endif()
     endif()
+elseif(EXISTS ${RMKIT_EXTERN})
+    set(RMKIT_FILE "${RMKIT_EXTERN}")
+    message(NOTICE "Using external rmkit header at ${RMKIT_FILE}")
+else()
+    message(FATAL_ERROR "Could not load rmkit.h! Build cannot proceed! Path: ${RMKIT_EXTERN}")
 endif()
 #add rmkit.h to our system header search paths
 include_directories(SYSTEM "${RMKIT_DIR}")
@@ -46,16 +56,32 @@ include_directories(SYSTEM "${RMKIT_DIR}")
 #add /include to search paths for font_embed.h
 include_directories("${CMAKE_SOURCE_DIR}/include")
 include_directories("${CMAKE_SOURCE_DIR}/assets")
+include_directories("${CMAKE_SOURCE_DIR}/ui")
+include_directories("${CMAKE_SOURCE_DIR}/opkg")
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/extern")
+
+
+find_package(ZLIB)
 
 add_executable(${PROJECT_NAME} src/main.cpp
         src/rempack.cpp
-        ${RMKIT_FILE}
+        "$<IF:$<BOOL:${RMKIT_EXTERN}>,${RMKIT_FILE},extern/rmkit.h>"
+        #${RMKIT_FILE}
         assets/icons/icons_embed.h
+        ui/debug_widgets.h
+        opkg/opkg.h
+        opkg/opkg.cpp
+        ui/rempack_widgets.h
+        ui/text_helpers.h
+        ui/list_box.h
+        include/semver.h
 )
 target_compile_options(${PROJECT_NAME}
-        PUBLIC $<$<CONFIG:Debug>:-O0 -g -Wall -Wno-unused-variable>
+        PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
         PUBLIC $<$<CONFIG:Release>:-O3>
 )
+target_link_options(${PROJECT_NAME}
+        PUBLIC -lz)
 #these can also be done as #define statements, but they MUST appear before rmkit.h
 #all these defines are necessary to build successfully
 #they're here for convenience (you can never forget them) and also to ensure
@@ -72,6 +98,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<STREQUAL:${TARGET_PLATFORM},x86>:FONT_EMBED_H="font_embed.h">
         )
 #see also: rm-toolchain.cmake
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
 
 #add_library(rmkit ${RMKIT_FILE})
 #set_target_properties(rmkit PROPERTIES LINKER_LANGUAGE CXX)
