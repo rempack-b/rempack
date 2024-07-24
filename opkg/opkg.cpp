@@ -413,9 +413,12 @@ inline bool try_parse_long(const char *prefix, const char *line, long &field) {
     }
 }
 
+string lastLine;
+
 //this is mostly copied from opkg's own parser. I don't hate it?
 bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, bool upstream) {
     static bool parsing_desc = false; //this is ugly, but it's what opkg does so whatever I guess
+    static bool parsing_conf = false; //this is ugly, but it's what opkg does so whatever I guess
     if (ptr == nullptr)
         return false;
     switch (*line) {
@@ -424,10 +427,11 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
             if (!update) {
                 if (try_parse_str("Package", line, ptr->Package)) {     //we're parsing packages out of multiple disparate lists
                     parsing_desc = false;                               //check if we already have a matching package
-                    break;                                              //if we do, reset the package pointer to the extant package
-                }                                                       //then we can just keep processing as normal
-            }                                                           //this works because Package is always the first line
-            else {                                                      //in the entry
+                    parsing_conf = false;                               //if we do, reset the package pointer to the extant package
+                    break;                                              //then we can just keep processing as normal
+                }                                                       //this works because Package is always the first line
+            }                                                           //in the entry
+            else {
                 string pn;
                 if (try_parse_str("Package", line, pn)) {
                     auto it = packages.find(pn);
@@ -435,6 +439,7 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
                         auto &fpk = it->second;
                         ptr = fpk;
                         parsing_desc = false;
+                        parsing_conf = false;
                         break;
                     } else {
                         //TODO: actually handle this error?
@@ -446,6 +451,7 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
             // /PACKAGE NAME HANDLING
             if(try_parse_str("Provides", line, ptr->_provides_str)){
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -453,14 +459,17 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'A': {
             if (try_parse_str("Architecture", line, ptr->Architecture)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_str("Alternatives", line, ptr->Alternatives)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_bool("Auto-Installed", line, ptr->autoInstalled)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -468,10 +477,12 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'D': {
             if (try_parse_str("Description", line, ptr->Description)) {
                 parsing_desc = true;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_str("Depends", line, ptr->_depends_str)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -479,22 +490,27 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'C': {
             if(try_parse_str("Conflicts", line, ptr->_conflicts_str)){
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             string c;
             if (try_parse_str("CPE-ID", line, c)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_str("Conffiles", line, c)) {  //we don't need conffiles, only one package has it
                 parsing_desc = false;                   //this will create some errors on the following lines
-                break;                                  //but that's manageable
+                                                        //but that's manageable
+                parsing_conf = true;                    //the above was a lie, let's handle this anyway
+                break;
             }
             goto NOT_RECOGNIZED;
         }
         case 'E': {
             if (try_parse_bool("Essential", line, ptr->Essential)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -502,6 +518,7 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'F': {
             if (try_parse_str("Filename", line, ptr->Filename)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -509,6 +526,7 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'H': {
             if (try_parse_str("Homepage", line, ptr->Homepage)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -516,10 +534,12 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'I': {
             if (try_parse_uint("Installed-Size", line, ptr->Size)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_long("Installed-Time", line, ptr->installTime)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -527,6 +547,7 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'L': {
             if (try_parse_str("License", line, ptr->License)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -534,6 +555,7 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'M': {
             if (try_parse_str("Maintainer", line, ptr->Maintainer)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -541,11 +563,13 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'R': {
             if (try_parse_str("Replaces", line, ptr->_replaces_str)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             string r;
             if (try_parse_str("Require-User", line, r)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -553,31 +577,47 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
         case 'S': {
             if (try_parse_str("Section", line, ptr->Section)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_str("SHA256sum", line, ptr->SHA256sum)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_uint("Size", line, ptr->Size)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_str("Status", line, ptr->_status_str)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             string s;
             if (try_parse_str("SourceDateEpoch", line, s)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_str("SourceName", line, s)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             if (try_parse_str("Source", line, s)) {
                 parsing_desc = false;
+                parsing_conf = false;
+                break;
+            }
+            goto NOT_RECOGNIZED;
+        }
+        case 'U':{
+            //URL appears to be an alias for Homepage?
+            if (try_parse_str("URL", line, ptr->Homepage)) {
+                parsing_desc = false;
+                parsing_conf = false;
                 break;
             }
             goto NOT_RECOGNIZED;
@@ -586,6 +626,7 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
             string s;
             if (try_parse_str("Version", line, s)) {
                 parsing_desc = false;
+                parsing_conf = false;
                 if(upstream)
                     ptr->UpstreamVersion = s;
                 else
@@ -605,6 +646,14 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
                 ptr->Description.append(ld);
                 break;
             }
+            if (parsing_conf) {
+                utils::trim(ptr->Conffiles);
+                ptr->Conffiles.append("\n");
+                auto ld = string(line);
+                utils::trim(ld);
+                ptr->Conffiles.append(ld);
+                break;
+            }
         }
         NOT_RECOGNIZED:
         default: {
@@ -614,7 +663,8 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
             for (uint i = 0; i < dln; i++)
                 if (line[i] != ' ' && line[i] != '\n' && line[i] != '\r') {
                     printf("BadChar: %d :: %2x :: %c\n", i, line[0], line[0]);
-                    printf("Unhandled tag:%s\n", line);
+                    printf("Unhandled tag: %s\n", line);
+                    printf("Last good line: %s\n", lastLine.c_str());
                     return true;
                 }
             printf("UNKN: ");
@@ -625,10 +675,12 @@ bool opkg::parse_line(shared_ptr<package> &ptr, const char *line, bool update, b
             return false;
         }
     }
+    lastLine = line;
     return true;
 }
 
 void opkg::InitializeRepositories() {
+//TODO: This can most likely be parallelized to shorten the startup delay on multicore devices
     packages.clear();
     int pc = 0;
     char cbuf[4096]{};
@@ -638,6 +690,7 @@ void opkg::InitializeRepositories() {
         auto gzf = gzopen(f.path().c_str(), "rb");
         repositories.push_back(f.path().filename());
         int count = 0;
+        //gzgets reads one line out of a gzipped file
         while (gzgets(gzf, cbuf, sizeof(cbuf)) != nullptr) {
             count++;
             if (!parse_line(pk, cbuf, false, true)) {     //if parse_line returns false, we're done parsing this package
