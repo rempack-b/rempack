@@ -19,7 +19,7 @@ set(HASH_FILE "${RMKIT_DIR}/sha256sum.txt")
 set(RMKIT_FILE "${RMKIT_DIR}/rmkit.h")
 
 #use this if you're building against a custom version of rmkit.h
-set(RMKIT_EXTERN "${CMAKE_SOURCE_DIR}/extern/rmkit.h")
+#set(RMKIT_EXTERN "${CMAKE_SOURCE_DIR}/extern/rmkit.h")
 
 if(NOT DEFINED RMKIT_EXTERN)
     #don't hit the server if we already have the file
@@ -47,6 +47,7 @@ if(NOT DEFINED RMKIT_EXTERN)
 elseif(EXISTS ${RMKIT_EXTERN})
     set(RMKIT_FILE "${RMKIT_EXTERN}")
     message(NOTICE "Using external rmkit header at ${RMKIT_FILE}")
+    include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/extern")
 else()
     message(FATAL_ERROR "Could not load rmkit.h! Build cannot proceed! Path: ${RMKIT_EXTERN}")
 endif()
@@ -58,14 +59,13 @@ include_directories("${CMAKE_SOURCE_DIR}/include")
 include_directories("${CMAKE_SOURCE_DIR}/assets")
 include_directories("${CMAKE_SOURCE_DIR}/ui")
 include_directories("${CMAKE_SOURCE_DIR}/opkg")
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/extern")
 
 
 find_package(ZLIB)
 
 add_executable(${PROJECT_NAME} src/main.cpp
         src/rempack.cpp
-        "$<IF:$<BOOL:${RMKIT_EXTERN}>,${RMKIT_FILE},extern/rmkit.h>"
+        #"$<IF:$<BOOL:${RMKIT_EXTERN}>,${RMKIT_FILE},extern/rmkit.h>"
         #${RMKIT_FILE}
         assets/icons/icons_embed.h
         ui/debug_widgets.h
