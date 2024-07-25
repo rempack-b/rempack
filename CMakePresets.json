@@ -39,6 +39,34 @@
         "CMAKE_BUILD_TYPE": "Release",
         "TARGET_PLATFORM": "rm"
       }
+    },
+    {
+      "name": "Debug Native Docker",
+      "hidden": false,
+      "toolchainFile": "rm-toolchain.cmake",
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "Docker"
+        }
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TARGET_PLATFORM": "rm"
+      }
+    },
+    {
+      "name": "Release Native Docker",
+      "hidden": false,
+      "toolchainFile": "rm-toolchain.cmake",
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "Docker"
+        }
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TARGET_PLATFORM": "rm"
+      }
     }
   ]
 }
