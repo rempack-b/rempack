@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CMakePresetLoader"><![CDATA[{
+  "useNewFormat": true
+}]]></component>
+  <component name="CMakeReloadState">
+    <option name="reloaded" value="true" />
+  </component>
+  <component name="CMakeRunConfigurationManager">
+    <generated>
+      <config projectName="rempack" targetName="run_app" />
+      <config projectName="rempack" targetName="docker_release" />
+      <config projectName="rempack" targetName="rempack" />
+    </generated>
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug Native Docker" ENABLED="true" FROM_PRESET="true" />
+      <configuration PROFILE_NAME="Debug x86" ENABLED="false" FROM_PRESET="true" />
+      <configuration PROFILE_NAME="Release x86" ENABLED="false" FROM_PRESET="true" />
+      <configuration PROFILE_NAME="Debug Native" ENABLED="false" FROM_PRESET="true" />
+      <configuration PROFILE_NAME="Release Native" ENABLED="false" FROM_PRESET="true" />
+      <configuration PROFILE_NAME="Release Native Docker" ENABLED="false" FROM_PRESET="true" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="da0fb425-1163-48b5-b8ed-5c5a9f0b7674" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug Native Docker" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 0
+}]]></component>
+  <component name="ProjectId" id="2jifOqPEQx4wh6CGp4utQOqygxT" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "CMakeSettings",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RdControllerToolWindowsLayoutState" isNewUi="false">
+    <layout>
+      <window_info id="Commit_Guest" show_stripe_button="false" />
+      <window_info id="Bookmarks" order="0" show_stripe_button="false" side_tool="true" />
+      <window_info id="Merge Requests" order="0" show_stripe_button="false" />
+      <window_info id="Structure" order="0" show_stripe_button="false" side_tool="true" />
+      <window_info id="Pull Requests" order="0" show_stripe_button="false" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.25" />
+      <window_info id="Commit" order="0" show_stripe_button="false" />
+      <window_info id="Learn" order="0" show_stripe_button="false" />
+      <window_info id="DFA" order="0" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Version Control" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" />
+      <window_info anchor="bottom" id="Run" order="2" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
+      <window_info anchor="bottom" id="CMake" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Database Changes" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="TypeScript" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Python Packages" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="TODO" order="4" show_stripe_button="false" />
+      <window_info active="true" anchor="bottom" id="Messages" order="4" visible="true" weight="0.330314" />
+      <window_info anchor="bottom" id="Inspection" order="4" weight="0.4" />
+      <window_info anchor="bottom" id="File Transfer" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Problems View" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Terminal" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Services" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Vcpkg" order="4" show_stripe_button="false" />
+      <window_info anchor="bottom" id="clangd" order="4" show_stripe_button="false" />
+      <window_info anchor="right" id="Key Promoter X" order="0" show_stripe_button="false" />
+      <window_info anchor="right" id="Database" order="0" show_stripe_button="false" />
+      <window_info anchor="right" id="make" order="0" show_stripe_button="false" side_tool="true" />
+      <window_info anchor="right" id="Coverage" order="0" show_stripe_button="false" side_tool="true" />
+      <window_info anchor="right" id="Python Console" order="0" show_stripe_button="false" />
+      <window_info anchor="right" id="PlatformIO" order="0" show_stripe_button="false" />
+      <window_info anchor="right" id="Meson" order="0" show_stripe_button="false" />
+      <window_info anchor="right" id="AIAssistant" order="0" show_stripe_button="false" />
+      <window_info anchor="right" id="Notifications" order="0" weight="0.25" />
+    </layout>
+  </component>
+  <component name="RunManager" selected="Remote GDB Server.rempack">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="rempack" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rempack" TARGET_NAME="rempack" CONFIG_NAME="Debug Native Docker" RUN_TARGET_PROJECT_NAME="rempack" RUN_TARGET_NAME="rempack">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="rempack" type="com.jetbrains.cidr.remote.gdbserver.type" factoryName="com.jetbrains.cidr.remote.gdbserver.factory" nameIsGenerated="true" PROGRAM_PARAMS="--wrapper /opt/bin/rm2fb-client -- :1234 /tmp/CLion/debug/rempack" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rempack" TARGET_NAME="rempack" CONFIG_NAME="Debug Native Docker" version="1" RUN_TARGET_PROJECT_NAME="rempack" RUN_TARGET_NAME="rempack">
+      <custom-gdb-server version="1" gdb-connect="remarkable:1234" executable="" warmup-ms="0" download-type="ALWAYS" sshConfigName="root@remarkable:22 key" uploadFile="/tmp/CLion/debug/rempack" defaultGdbServerArgs=":1234 /tmp/CLion/debug/rempack">
+        <debugger kind="GDB" isBundled="true" />
+      </custom-gdb-server>
+      <method v="2">
+        <option name="CLION.COMPOUND.BUILD" enabled="true" />
+        <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_External Tools_setup_debug" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="CMake Application.rempack" />
+      <item itemvalue="Remote GDB Server.rempack" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="da0fb425-1163-48b5-b8ed-5c5a9f0b7674" name="Changes" comment="" />
+      <created>1721874790947</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1721874790947</updated>
+      <workItem from="1721874793501" duration="520000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VCPKGProject">
+    <isAutomaticCheckingOnLaunch value="false" />
+    <isAutomaticFoundErrors value="true" />
+    <isAutomaticReloadCMake value="true" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
