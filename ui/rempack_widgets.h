@@ -10,6 +10,7 @@
 #include "overlay.h"
 #include <utility>
 #include "../opkg/opkg.h"
+#include "../src/widget_helpers.h"
 
 namespace widgets{
 
@@ -99,18 +100,21 @@ namespace widgets{
             dialog->buttons.push_back("OK");
             dialog->show();
             ui::TaskQueue::add_task([dialog, mt]() {
-                opkg::UpdateRepos([dialog, mt](int rc, const string &out) {
-                    stringstream ss{out};
-                    ss << endl;
-                    if(rc == 0) {
-                        ss << "Update successful" << endl;
-                    }
-                    else{
-                        ss << "Update error!" << endl;
-                    }
+                stringstream ss = {};
+                auto rc = opkg::UpdateRepos([dialog, mt, &ss](const string &out) {
+                    ss << out << endl;
                     mt->set_text(ss.str());
                     dialog->mark_redraw();
                 });
+                ss << endl;
+                if(rc == 0) {
+                    ss << "Update successful" << endl;
+                }
+                else{
+                    ss << "Update error!" << endl;
+                }
+                mt->set_text(ss.str());
+                dialog->mark_redraw();
             });
             dialog->events.close+=[=](string s){dialog->hide();};
             ui::MainLoop::refresh();
@@ -320,7 +324,118 @@ namespace widgets{
         }
     };
 
-    //buttons: (re)install, uninstall, download, (preview image)
+    /*
+    * _________________________________________________
+    * | Window Title                                  |
+    * | _____________________________________________ |
+    * | | Scrolling                                 | |
+    * | | Text                                      | |
+    * | | Contents                                  | |
+    * | ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯ |
+    * | [Close]                                       |
+    * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+    */
+    class TerminalDialog: public widgets::Overlay {
+    public:
+        TerminalDialog(int x, int y, int w, int h, const std::string& title): Overlay(x,y,w,h){
+            this->buttons.clear();
+            this->buttons.emplace_back("Dismiss");
+        }
+        void build_dialog() override {
+            this->create_scene();
+            layout = make_shared<ui::VerticalLayout>(x, y, w, h, this->scene);
+            int dx = padding;
+            int dy = padding;
+            int dw = w - padding - padding;
+            t1 = new ui::Text(dx, dy, dw, utils::line_height(), title);
+            int dht = h - padding - padding - 50 - utils::line_height();
+            buffer_size = dht / (utils::line_height() + padding);
+            layout->pack_start(t1);
+            l1 = new ui::MultiText(dx, dy + padding, dw,  dht, "Running...");
+            layout->pack_start(l1);
+            auto button_bar = new ui::HorizontalLayout(0, 0, this->w, 50, this->scene);
+            layout->pack_end(button_bar);
+            button_bar->y -= 2;
+
+            // layout->reflow();
+
+            this->add_buttons(button_bar);
+            ui::TaskQueue::add_task([this](){this->update_texts();});
+        }
+        void on_reflow() override{
+            l1->on_reflow();
+        }
+        void mark_redraw() override{
+            layout->refresh();
+        }
+        void stdout_callback(const std::string &s){
+            std::cout << "LC:: " << s << std::endl;
+            auto default_fs = ui::Style::DEFAULT.font_size;
+            auto lines = utils::wrap_string(s, w - padding - padding, default_fs);
+            for(const auto &l : lines)
+                push_line(l);
+            update_texts();
+            mark_redraw();
+        }
+        void set_callback(const std::function<void()> &cb){
+            callback = cb;
+        }
+    private:
+        const int padding = 20;
+        shared_ptr<ui::VerticalLayout> layout;
+        ui::Text *t1 = nullptr;
+        ui::MultiText *l1 = nullptr;
+        std::deque<std::string> consoleBuffer;
+        int buffer_size = 16;
+        std::function<void()> callback;
+
+void on_button_selected(std::string s) override{
+    callback();
+    widgets::Overlay::on_button_selected(s);
+}
+
+        void add_buttons_reflow(ui::HorizontalReflow *button_bar) {
+            auto default_fs = ui::Style::DEFAULT.font_size;
+            for (auto b: this->buttons) {
+                auto image = stbtext::get_text_size(b, default_fs);
+
+                button_bar->pack_start(new ui::DialogButton(20, 0, image.w + default_fs, 50, this, b));
+            }
+        }
+
+        void push_line(const std::string &l){
+    std::cout << "TD::PL:: " << l << std::endl;
+            consoleBuffer.push_back(l);
+            if(consoleBuffer.size() > buffer_size)
+                consoleBuffer.pop_front();
+        }
+
+
+        void update_texts(){
+            if(!t1 || !l1)
+                return;
+
+
+            std::stringstream ss;
+            for(const auto &l : consoleBuffer)
+                ss << l << std::endl;
+            auto str = ss.str();
+            l1->set_text(str.substr(0, str.size() - 2));
+            on_reflow();
+            Overlay::mark_redraw();
+        }
+    };
+
+    /*
+    * _____________________________________________________________________________________
+    * | Package info                                                                      |
+    * | Package name                                                                      |
+    * | Package version                                                                   |
+    * | Package etc                                                                       |
+    * |                                                                                   |
+    * | [Install(Upgrade)] [Uninstall] [Download] [Preview]            [Pending: [+0/-0]] |
+    * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+    */
     class PackageInfoPanel: public RoundCornerWidget{
     public:
         int padding = 5;
@@ -334,14 +449,17 @@ namespace widgets{
             _removeBtn = make_shared<EventButton>(x,y,200, controlHeight,"Uninstall");
             _downloadBtn = make_shared<EventButton>(x,y,200, controlHeight,"Download");
             _previewBtn = make_shared<EventButton>(x,y,200, controlHeight,"Preview");
+            _actionCounter = make_shared<EventButton>(x,y,200, controlHeight, "Pending: [+0/-0]");
             children.push_back(_installBtn);
             children.push_back(_removeBtn);
-            children.push_back(_downloadBtn);
-            children.push_back(_previewBtn);
+            //children.push_back(_downloadBtn);
+            //children.push_back(_previewBtn);
+            //children.push_back(_actionCounter);
             _installBtn->events.clicked += [this](void*){events.install();};
             _removeBtn->events.clicked += [this](void*){events.uninstall();};
             _downloadBtn->events.clicked += [this](void*){events.download();};
             _previewBtn->events.clicked += [this](void*){events.preview();};
+            _actionCounter->events.clicked += [this](void*){events.enact();};
             layout_buttons();
         }
 
@@ -353,6 +471,7 @@ namespace widgets{
             PACKAGE_EVENT uninstall;
             PACKAGE_EVENT download;
             PACKAGE_EVENT preview;
+            PACKAGE_EVENT enact;
         };
 
         PACKAGE_EVENTS events;
@@ -388,9 +507,19 @@ namespace widgets{
             else
                 _downloadBtn->hide();
         }
+
+        void set_actions(int add, int remove){
+            stringstream ss;
+            ss << "Pending: [+" << add << "/-" << remove << "]";
+            _actionCounter->textWidget->text = ss.str();
+            _actionCounter->text = ss.str();
+            _actionCounter->mark_redraw();
+            _actionCounter->textWidget->mark_redraw();
+            mark_redraw();
+        }
     private:
         shared_ptr<ui::MultiText> _text;
-        shared_ptr<EventButton> _installBtn, _removeBtn, _downloadBtn, _previewBtn;
+        shared_ptr<EventButton> _installBtn, _removeBtn, _downloadBtn, _previewBtn, _actionCounter;
 
         void layout_buttons(){
             auto dx = x + padding;
@@ -403,14 +532,248 @@ namespace widgets{
             dx += controlWidth + padding;
             _previewBtn->set_coords(dx,dy,controlWidth,controlHeight);
 
+            _actionCounter->set_coords(w - controlWidth - padding, dy, controlWidth, controlHeight);
+
             _installBtn->on_reflow();
             _removeBtn->on_reflow();
             _downloadBtn->on_reflow();
             _previewBtn->on_reflow();
+            _actionCounter->on_reflow();
             _installBtn->mark_redraw();
             _removeBtn->mark_redraw();
             _downloadBtn->mark_redraw();
             _previewBtn->mark_redraw();
+            _actionCounter->mark_redraw();
+        }
+    };
+    /*
+     * _______________________________________________
+     * | Installing %d packages and %d dependencies: |
+     * | ___________________________________________ |
+     * | | List                                    | |
+     * | | Box                                     | |
+     * | | Contents                                | |
+     * | ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯ |
+     * | This will require approximately %d K/MB     |
+     * | [OK] [Abort]                                |
+     * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+     */
+    class InstallDialog: public widgets::Overlay {
+    public:
+        InstallDialog(int x, int y, int w, int h, const std::vector<shared_ptr<package>> &toInstall): Overlay(x,y,w,h){
+            packages = toInstall;
+        }
+        void build_dialog() override {
+            this->create_scene();
+            int padding = 20;
+            unordered_map<string, uint> items;
+            for (const auto &pk: packages) {
+                widget_helpers::format_deps_recursive(items, pk);
+            }
+            stringstream s1;
+            s1 << "Installing " << packages.size() << " packages and ";
+            s1 << items.size() - packages.size() << " dependencies:";
+            uint totalSize = 0;
+            vector<string> labels;
+            for (const auto &[n, s]: items) {
+                labels.push_back(n);
+                totalSize += s;
+            }
+            stringstream s2;
+            s2 << "This will require approximately " << utils::stringifySize(totalSize);
+
+            auto layout = ui::VerticalLayout(x, y, w, h, this->scene);
+            int dx = padding;
+            int dy = padding;
+            int dw = w - padding - padding;
+            auto t1 = new ui::Text(dx, dy, dw, utils::line_height(), s1.str());
+            layout.pack_start(t1);
+            int lh = min((uint)300, ((labels.size() )* (utils::line_height()+5))+10);
+            auto l1 = new widgets::ListBox(dx, dy+padding, dw, lh, utils::line_height());
+            for (const auto &line: labels) {
+                l1->add(line);
+            }
+            l1->selectable = false;
+            layout.pack_start(l1);
+            auto t2 = new ui::Text(dx, dy + padding + padding, dw, utils::line_height(), s2.str());
+            layout.pack_start(t2);
+            auto button_bar = ui::HorizontalLayout(0, 0, this->w, 50, this->scene);
+            layout.pack_end(button_bar);
+            button_bar.y -= 2;
+
+            this->add_buttons(&button_bar);
+        }
+        void setCallback(const function<void(bool)>& callback){
+            _callback = callback;
+        }
+    private:
+        function<void(bool)> _callback;
+        std::vector<shared_ptr<package>> packages;
+        bool _accepted = false;
+
+        void on_button_selected(std::string s) override{
+            if(s == "OK") {
+                _accepted = true;
+                run_install();
+                return;
+            }
+            else {
+                _accepted = false;
+            }
+            widgets::Overlay::on_button_selected(s);
+            _callback(_accepted);
+        }
+
+        void run_install(){
+            auto td = new TerminalDialog(500,500,800,1100, "opkg install");
+            td->set_callback([this](){this->_callback(this->_accepted);this->hide();});
+            td->show();
+            auto ret = opkg::Install(packages, [td](const string s){td->stdout_callback(s);});
+            if(ret == 0)
+                td->stdout_callback("Done.");
+            else
+                td->stdout_callback("Error!");
+            std::cout << "opkg install returned with exit code " << ret << std::endl;
+        }
+    };
+
+    /*
+    * _________________________________________________
+    * | Uninstalling %d packages and %d dependencies: |
+    * | _____________________________________________ |
+    * | | List                                      | |
+    * | | Box                                       | |
+    * | | Contents                                  | |
+    * | ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯ |
+    * |  [X] Autoremove dependencies                  |
+    * |                                               |
+    * | This will free approximately %d K/MB          |
+    * | [OK] [Abort]                                  |
+    * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+    */
+    class UninstallDialog: public widgets::Overlay {
+    public:
+        UninstallDialog(int x, int y, int w, int h, const std::vector<shared_ptr<package>> &toInstall): Overlay(x,y,w,h){
+            packages = toInstall;
+        }
+        void build_dialog() override {
+            this->create_scene();
+            layout = make_shared<ui::VerticalLayout>(x, y, w, h, this->scene);
+            int dx = padding;
+            int dy = padding;
+            int dw = w - padding - padding;
+            t1 = new ui::Text(dx, dy, dw, utils::line_height(), "Loading...");
+            layout->pack_start(t1);
+            l1 = new widgets::ListBox(dx, dy + padding, dw,  utils::line_height(), utils::line_height());
+            l1->selectable = false;
+            layout->pack_start(l1);
+            cb = new ui::ToggleButton(dx, dy + padding + padding, dw, utils::line_height(), "Auto-remove dependencies");
+            cb->toggled = true;
+            cb->events.toggled += [this](bool s){on_autoremove_tick(s);};
+            cb->style.justify = ui::Style::JUSTIFY::LEFT;
+            layout->pack_start(cb);
+            t2 = new ui::Text(dx, dy + padding + padding, dw, utils::line_height(), "");
+            layout->pack_start(t2);
+            auto button_bar = new ui::HorizontalLayout(0, 0, this->w, 50, this->scene);
+            layout->pack_end(button_bar);
+            button_bar->y -= 2;
+
+           // layout->reflow();
+
+            this->add_buttons(button_bar);
+            ui::TaskQueue::add_task([this](){this->update_texts();});
+        }
+        void on_reflow() override{
+            l1->on_reflow();
+        }
+        void mark_redraw() override{
+            layout->refresh();
+        }
+        void setCallback(const function<void(bool)>& callback){
+            _callback = callback;
+        }
+    private:
+        function<void(bool)> _callback;
+        const int padding = 20;
+        shared_ptr<ui::VerticalLayout> layout;
+        ui::Text *t1 = nullptr;
+        ListBox *l1 = nullptr;
+        ui::Text *t2 = nullptr;
+        ui::ToggleButton *cb = nullptr;
+        bool _accepted = false;
+        std::vector<shared_ptr<package>> packages;
+        bool dependencies = true;
+
+        void on_button_selected(std::string s) override{
+            if(s == "OK") {
+                _accepted = true;
+                run_uninstall();
+                return;
+            }
+            else
+                _accepted = false;
+            widgets::Overlay::on_button_selected(s);
+            _callback(_accepted);
+        }
+
+        void on_autoremove_tick(bool state){
+            dependencies = state;
+            ui::TaskQueue::add_task([this](){this->update_texts();});
+        }
+
+        void add_buttons_reflow(ui::HorizontalReflow *button_bar) {
+            auto default_fs = ui::Style::DEFAULT.font_size;
+            for (auto b: this->buttons) {
+                auto image = stbtext::get_text_size(b, default_fs);
+
+                button_bar->pack_start(new ui::DialogButton(20, 0, image.w + default_fs, 50, this, b));
+            }
+        }
+
+        vector<shared_ptr<package>> results;
+
+        void run_uninstall(){
+            auto td = new TerminalDialog(500,500,800,1100, "opkg uninstall");
+            td->set_callback([this](){this->_callback(this->_accepted);this->hide();});
+            td->show();
+            auto ret = opkg::Uninstall(packages, [td](const string s){td->stdout_callback(s);}, dependencies ? " --autoremove" : "");
+            if(ret == 0)
+                td->stdout_callback("Done.");
+            else
+                td->stdout_callback("Error!");
+            std::cout << "opkg uninstall returned with exit code " << ret << std::endl;
+        }
+
+        void update_texts(){
+            if(!t1 || !t2 || !l1)
+                return;
+            results.clear();
+            auto ret = opkg::Instance->ComputeUninstall(packages, dependencies, &results);
+            if(ret != 0){
+                printf("OPKG ERROR! %d\n", ret);
+            }
+            stringstream s1;
+            s1 << "Uninstalling " << packages.size() << " packages and ";
+            s1 << results.size() - packages.size() << " dependencies:";
+
+            t1->set_text(s1.str());
+
+            uint totalSize = 0;
+            int lh = min((uint)300, ((results.size() )* (utils::line_height()+5))+10);
+            l1->h = lh;
+            l1->clear();
+            for (const auto &pk: results) {
+                l1->add(pk->Package);
+                totalSize += pk->Size;
+            }
+            cb->y = lh + padding + l1->y;
+            cb->mark_redraw();
+            stringstream s2;
+            s2 << "This will free approximately " << utils::stringifySize(totalSize);
+            t2->y = cb->y + padding + cb->h;
+            t2->set_text(s2.str());
+            on_reflow();
+            Overlay::mark_redraw();
         }
     };
 }

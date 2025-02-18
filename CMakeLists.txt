@@ -19,7 +19,7 @@ set(HASH_FILE "${RMKIT_DIR}/sha256sum.txt")
 set(RMKIT_FILE "${RMKIT_DIR}/rmkit.h")
 
 #use this if you're building against a custom version of rmkit.h
-#set(RMKIT_EXTERN "${CMAKE_SOURCE_DIR}/extern/rmkit.h")
+set(RMKIT_EXTERN "${CMAKE_SOURCE_DIR}/extern/rmkit.h")
 
 if(NOT DEFINED RMKIT_EXTERN)
     #don't hit the server if we already have the file
@@ -76,7 +76,7 @@ add_executable(${PROJECT_NAME} src/main.cpp
         ui/list_box.h
 )
 target_compile_options(${PROJECT_NAME}
-        PUBLIC $<$<CONFIG:Debug>:-g -Wall -Wno-unused-variable>
+        PUBLIC $<$<CONFIG:Debug>:-g -O0 -Wall -Wno-unused-variable>
         PUBLIC $<$<CONFIG:Release>:-O3>
 )
 target_link_options(${PROJECT_NAME}
@@ -86,11 +86,11 @@ target_link_options(${PROJECT_NAME}
 #they're here for convenience (you can never forget them) and also to ensure
 #they appear early enough in the linking stage
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-        RMKIT_IMPLEMENTATION
-        STB_IMAGE_IMPLEMENTATION
-        STB_IMAGE_RESIZE_IMPLEMENTATION
-        STB_IMAGE_WRITE_IMPLEMENTATION
-        STB_TRUETYPE_IMPLEMENTATION
+        #RMKIT_IMPLEMENTATION
+        #STB_IMAGE_IMPLEMENTATION
+        #STB_IMAGE_RESIZE_IMPLEMENTATION
+        #STB_IMAGE_WRITE_IMPLEMENTATION
+        #STB_TRUETYPE_IMPLEMENTATION
         #when building for native hardware, REMARKABLE must be defined
         $<$<STREQUAL:${TARGET_PLATFORM},rm>:REMARKABLE>
         #debug builds require an external font file. I've provided one for you in /include

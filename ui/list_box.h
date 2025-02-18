@@ -158,6 +158,11 @@ namespace widgets {
             mark_redraw();
         }
 
+        void clear(){
+            contents.clear();
+            mark_redraw();
+        }
+
         void on_reflow() override {
             layout_buttons();
             trim_texts();

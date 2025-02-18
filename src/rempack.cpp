@@ -2,6 +2,11 @@
 // Created by brant on 1/24/24.
 //
 //#define DEBUG_FB
+#define RMKIT_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_TRUETYPE_IMPLEMENTATION
 #include <rmkit.h>
 #include <unordered_set>
 #include <utility>
@@ -23,6 +28,8 @@ widgets::ListBox *filterPanel, *packagePanel;
 widgets::PackageInfoPanel *displayBox;
 widgets::MenuData *_menuData;
 
+void setupDebug();
+
 void Rempack::startApp() {
     //std::raise(SIGINT);   //firing a sigint here helps synchronize remote gdbserver
     //sleep(10);
@@ -36,10 +43,11 @@ void Rempack::startApp() {
     ui::MainLoop::refresh();
     //ui::MainLoop::redraw();
 
+    setupDebug();
     while(true){
         ui::MainLoop::main();
         ui::MainLoop::redraw();
-        fb->waveform_mode = WAVEFORM_MODE_DU;
+        fb->waveform_mode = WAVEFORM_MODE_GC16;
         ui::MainLoop::read_input();
     }
 
@@ -128,25 +136,39 @@ void onFiltersChanged(widgets::FilterOptions &options){
     filterPanel->mark_redraw();
     packagePanel->mark_redraw();
 }
-void markInstall(shared_ptr<package> pkg){
-    if(pkg->IsInstalled())
+
+void markInstall(const shared_ptr<package>& package){
+    if(package->IsInstalled())
         return;
-    if(_menuData->PendingInstall.emplace(pkg->Package).second)
-        for(auto const &spk: pkg->Depends)
+    if(_menuData->PendingInstall.emplace(package->Package).second)
+        for(auto const &spk: package->Depends)
             markInstall(spk);
 }
+
 void onInstallClick(void*){
     //auto str = pkg.formatDependencyTree(_selected, false);
     //cout << str;
     //auto m = new widgets::ModalOverlay(20,20,1200,1400,{widgets::ModalOverlay::ModalButton::OK}, str);
-    auto m = new widget_helpers::InstallDialog(500,500,600,800,vector<shared_ptr<package>>{_selected});
+    auto m = new widgets::InstallDialog(500,500,600,800,vector<shared_ptr<package>>{_selected});
     //auto m = new ui::InfoDialog(50,50,200,200);
     //m->set_title("installing your mom");
+    m->setCallback([](bool pass){
+        if(pass){
+            std::cout << "add install" << std::endl;
+            _menuData->PendingInstall.emplace(_selected->Package);
+        }
+        std::cout << "pass install" << std::endl;
+        displayBox->set_actions(_menuData->PendingInstall.size(), _menuData->PendingRemove.size());
+    });
     m->show();
-    _menuData->PendingInstall.emplace(_selected->Package);
 }
 void onUninstallClick(void*){
-    _menuData->PendingRemove.emplace(_selected->Package);
+    auto m = new widgets::UninstallDialog(500,500,600,800,vector<shared_ptr<package>>{_selected});
+    m->setCallback([](bool pass){
+       std::cout << "uninstall pass: " << pass << std::endl;
+        displayBox->set_actions(_menuData->PendingInstall.size(), _menuData->PendingRemove.size());
+    });
+    m->show();
 }
 void onDownloadClick(void*){
 
@@ -154,6 +176,16 @@ void onDownloadClick(void*){
 void onPreviewClick(void*){
 
 }
+void onEnactClick(void*){
+
+}
+
+
+void setupDebug(){
+    //_selected = pkg.packages["dotnet-sdk"];
+    //onUninstallClick(nullptr);
+}
+
 
 //1404x1872 - 157x209mm -- 226dpi
 ui::Scene buildHomeScene(int width, int height) {
@@ -163,6 +195,7 @@ ui::Scene buildHomeScene(int width, int height) {
     //vertical stack that takes up the whole screen
     auto layout = new ui::VerticalReflow(padding, padding, width - padding*2, height - padding*2, scene);
 
+    opkg::Instance = &pkg;
     pkg.InitializeRepositories();
     /* Search + menus */
     //short full-width pane containing search and menus
@@ -222,6 +255,7 @@ ui::Scene buildHomeScene(int width, int height) {
     displayBox->events.uninstall += PLS_DELEGATE(onUninstallClick);
     displayBox->events.download += PLS_DELEGATE(onDownloadClick);
     displayBox->events.preview += PLS_DELEGATE(onPreviewClick);
+    displayBox->events.enact += PLS_DELEGATE(onEnactClick);
 
     layout->pack_start(searchPane);
     layout->pack_start(applicationPane);

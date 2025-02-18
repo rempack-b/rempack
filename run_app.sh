@@ -16,7 +16,7 @@ function kill_remote_app() {
 function cleanup() {
   kill_remote_app
   #ssh ${RM_USER}@${REMARKABLE_HOST} rm ${BASE_DIR}/${APP}
-  ssh ${RM_USER}@${REMARKABLE_HOST} systemctl restart remux
+  ssh ${RM_USER}@${REMARKABLE_HOST} launcherctl restart-launcher
   echo "FINISHED"
   trap - EXIT
   exit 0
