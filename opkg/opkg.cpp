@@ -70,32 +70,58 @@ int execute(const std::string& cmd, std::string& output) {
     return pclose(pipe);
 };
 
-void opkg::Install(const vector<shared_ptr<package>>& targets, const function<void(int, const string &)>& callback) {
+int execute(const std::string& cmd, const function<void (const std::string &)> &callback) {
+    const std::string preload = "/opt/lib/librm2fb_client.so.1";
+    std::stringstream ss;
+    ss << "source ~/.bashrc; ";
+    ss << "export LD_PRELOAD=${LD_PRELOAD%" << preload << "}; ";
+    ss << cmd << "; ";
+    ss << "export LD_PRELOAD=${LD_PRELOAD}:" << preload;
+    ss << " 2>&1";
+    auto pipe = popen(ss.str().c_str(), "r");
+    if (!pipe) throw std::runtime_error("popen() failed!");
+
+    char cline[4096];
+    while (fgets(cline, sizeof(cline), pipe)){
+        for(const auto c : cline){
+            if(c == 0)
+                break;
+            if(c == '\n'){
+                auto s = std::string(cline);
+                callback(s);
+                memset(cline, 0, sizeof(cline));
+                break;
+            }
+        }
+    }
+
+    return pclose(pipe);
+}
+
+int opkg::Install(const vector<shared_ptr<package>> &targets, const function<void(const string &)> &lineCallback, const std::string& args) {
     stringstream ss;
     ss << "opkg install ";
     for(const auto& p: targets)
         ss << p->Package << " ";
-    string output;
-    auto ret = execute(ss.str(), output);
-
-    callback(ret, output);
+    if(OPKG_FORCE_NOACTION)
+        ss << " --noaction";
+    ss << args;
+    return execute(ss.str(), lineCallback);
 }
 
-void opkg::Uninstall(const vector<shared_ptr<package>>& targets, const function<void(int, const string &)>& callback) {
+int opkg::Uninstall(const vector<shared_ptr<package>> &targets, const function<void(const string &)> &lineCallback, const std::string& args) {
     stringstream ss;
     ss << "opkg remove ";
     for(const auto& p: targets)
         ss << p->Package << " ";
-    string output;
-    auto ret = execute(ss.str(), output);
-
-    callback(ret, output);
+    if(OPKG_FORCE_NOACTION)
+        ss << " --noaction";
+    ss << args;
+    return execute(ss.str(), lineCallback);
 }
 
-void opkg::UpdateRepos(const function<void(int, const string &)> &callback) {
-    string output;
-    auto ret = execute("opkg update", output);
-    callback(ret, output);
+int opkg::UpdateRepos(const function<void(const string &)> &lineCallback) {
+    return execute("opkg update", lineCallback);
 }
 
 void opkg::update_lists(){
@@ -760,4 +786,67 @@ void opkg::InitializeRepositories() {
     link_dependencies();
     update_lists();
     update_states();
+}
+
+std::unordered_set<std::string> uninstall_cache;
+void uninstall_callback(const std::string& line) {
+    // Check if the line starts with "Removing package "
+    size_t prefixPos = line.find("Removing package ");
+    if (prefixPos != string::npos) {
+        // Extract substring starting after "Removing package "
+        string packagePart = line.substr(prefixPos + 17);
+        // Find the first space to get the package name
+        size_t spacePos = packagePart.find(' ');
+        if (spacePos != string::npos) {
+            uninstall_cache.insert(packagePart.substr(0, spacePos));
+        }
+        else {
+            // If there's no space, the entire part is the package name
+            uninstall_cache.insert(packagePart);
+        }
+    }
+    else {
+        // Check if the line ends with ", removing."
+        size_t suffixPos = line.find(", removing.");
+        if (suffixPos != string::npos) {
+            // Extract substring up to the suffix
+            string packagePart = line.substr(0, suffixPos);
+            // Split into words and take the last one as the package name
+            vector<string> parts;
+            size_t start = 0;
+            while (start < packagePart.size()) {
+                size_t end = packagePart.find(' ', start);
+                if (end == string::npos) {
+                    end = packagePart.size();
+                }
+                if (end != start) { // Avoid empty tokens
+                    parts.push_back(packagePart.substr(start, end - start));
+                }
+                start = end + 1;
+            }
+            if (!parts.empty()) {
+                uninstall_cache.insert(parts.back());
+            }
+        }
+    }
+}
+
+int opkg::ComputeUninstall(const vector<shared_ptr<package>>& targets, bool includeDependencies, vector<shared_ptr<package>> *out_result) {
+    uninstall_cache.clear();
+
+    string s = " --noaction";
+    if(includeDependencies)
+        s += " --autoremove";
+
+    auto ret = Uninstall(targets, uninstall_callback, s);
+    for(const auto& pk : uninstall_cache){
+        auto it = packages.find(pk);
+        if(it == packages.cend()){
+            printf("ERROR! No package found for %s\n", pk.c_str());
+            continue;
+        }
+        out_result->push_back(it->second);
+    }
+    uninstall_cache.clear();
+    return ret;
 }

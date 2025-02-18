@@ -16,6 +16,9 @@
 #include <array>
 #include <unistd.h>
 
+//set to enforce the --noaction flag on all opkg transactions
+#define OPKG_FORCE_NOACTION false
+
 using namespace std;
 struct package{
     enum InstallState{
@@ -60,9 +63,10 @@ struct package{
 };
 class opkg {
 public:
-    static void Install(const vector<shared_ptr<package>>& targets, const function<void(int, const string&)>& callback);
-    static void Uninstall(const vector<shared_ptr<package>>& targets, const function<void(int, const string&)>& callback);
-    static void UpdateRepos(const function<void(int, const string&)>& callback);
+    static inline opkg* Instance;
+    static int Install(const vector<shared_ptr<package>> &targets, const function<void(const string &)> &lineCallback, const std::string& args = "");
+    static int Uninstall(const vector<shared_ptr<package>> &targets, const function<void(const string &)> &lineCallback, const std::string& args = "");
+    static int UpdateRepos(const function<void(const string &)> &lineCallback);
     void LoadSections(vector<string> *categories){ LoadSections(categories,vector<string>()); }
     void LoadSections(vector<string> *categories, vector<string> excludeRepos);
     void LoadPackages(vector<string> *pVector){ LoadPackages(pVector, vector<string>()); }
@@ -75,6 +79,7 @@ public:
     map<string,unordered_set<string>> sections_by_repo;
     static string FormatPackage(const shared_ptr<package>& package);
     static string formatDependencyTree(const shared_ptr<package>& pkg, bool excludeInstalled);
+    int ComputeUninstall(const vector<shared_ptr<package>>& targets, bool includeDependencies, vector<shared_ptr<package>> *out_result);
 private:
     bool parse_line(shared_ptr<package> &ptr, const char *line, bool update, bool upstream);
     bool split_str_and_find(const string& children_str, vector<shared_ptr<package>> &field);
