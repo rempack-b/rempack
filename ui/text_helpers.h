@@ -2,6 +2,10 @@
 // Created by brant on 2/5/24.
 //
 
+//#define DISABLE_TEXT_HELPER
+#ifdef DISABLE_TEXT_HELPER
+#include "text/text_helpers.h"
+#else
 #pragma once
 
 #include <rmkit.h>
@@ -16,7 +20,33 @@ namespace utils{
         return stbtext::get_line_height(style.font_size);
     }
 
-    //inline std::string wrap_string(std::string s, short fontSize, int &outHeight, int widthLimit, int heightLimit = -1){   }
+    inline std::vector<std::string> wrap_string(const std::string &s, int widthLimit, short fontSize) {
+        std::vector<std::string> res;
+        std::stringstream ss;
+        auto sw = stbtext::get_text_size(" ", fontSize).w;
+        auto lines = split_lines(s);
+        int x = 0;
+        for(const auto &line : lines) {
+            auto tokens = split(line, ' ');
+            for (std::string &tk: tokens) {
+                auto token = tk;
+                auto v = stbtext::get_text_size(token, fontSize);
+                //TODO: hard wrap long tokens, split URLs on slashes
+                v.w += sw;
+                if(x + v.w < widthLimit)
+                    x += v.w;
+                else{
+                    res.emplace_back(ss.str());
+                    ss.str("");
+                    x = v.w;
+                }
+                ss << token << ' ';
+            }
+            res.emplace_back(ss.str());
+            ss.str("");
+        }
+        return res;
+    }
 
     inline std::string clip_string(std::string s, int w, int h, short fontSize){
         std::stringstream ss;
@@ -47,3 +77,4 @@ namespace utils{
         return s;
     }
 }
+#endif

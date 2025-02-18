@@ -37,7 +37,7 @@ namespace utils{
     inline string stringifySize(uint64_t bytes)
     {
         const string suffix[] = {"B", "KB", "MB", "GB", "TB"};
-        char length = sizeof(suffix) / sizeof(suffix[0]);
+        char length = sizeof(suffix);
 
         int i = 0;
         double dblBytes = bytes;
