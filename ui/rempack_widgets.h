@@ -23,6 +23,7 @@ namespace widgets{
             _keyboard = new Keyboard();
             _keyboard->events.changed += PLS_DELEGATE(onChange);
             _keyboard->events.done += PLS_DELEGATE(onDone);
+
         }
 
         void on_reflow() override{
@@ -40,7 +41,7 @@ namespace widgets{
         shared_ptr<ui::Pixmap> pixmap;
 
         void onChange(KeyboardEvent ev){
-            set_text(ev.text);
+            set_text(_keyboard->text);
         }
         void onDone(KeyboardEvent ev){
             set_text(ev.text);

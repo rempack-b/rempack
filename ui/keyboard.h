@@ -94,11 +94,13 @@ namespace widgets {
             lazy_init();
         };
 
-        void lazy_init(){
-            ui::TaskQueue::add_task([this](){keyLayers[AlphaLow] = create_layout("qwertyuiop", "asdfghjkl", "zxcvbnm");});
-            ui::TaskQueue::add_task([this](){keyLayers[AlphaUpper] = create_layout("QWERTYUOIP", "ASDFGHJKL", "ZXCVBNM");});
-            ui::TaskQueue::add_task([this](){keyLayers[Numeric] = create_layout("1234567890", "-/:;() &@\"", "  ,.?!'  ");});
-            ui::TaskQueue::add_task([this](){keyLayers[Symbols] = create_layout("[]{}#%^*+=", "_\\|~<> $  ", "  ,.?!'  ");});
+        void lazy_init() {
+            ui::TaskQueue::add_task([this]() {
+                keyLayers[AlphaLow] = create_layout("qwertyuiop", "asdfghjkl", "zxcvbnm");
+                keyLayers[AlphaUpper] = create_layout("QWERTYUOIP", "ASDFGHJKL", "ZXCVBNM");
+                keyLayers[Numeric] = create_layout("1234567890", "-/:;() &@\"", "  ,.?!'  ");
+                keyLayers[Symbols] = create_layout("[]{}#%^*+=", "_\\|~<> $  ", "  ,.?!'  ");
+            });
         }
 
         void set_text(string t) {
@@ -198,6 +200,7 @@ namespace widgets {
                 if (text.size() > 0) {
                     text.pop_back();
                     dirty = 1;
+                    events.changed();
                 }
             };
             row3->add_key(backspace_key);
@@ -215,6 +218,7 @@ namespace widgets {
             space_key->mouse.click += PLS_LAMBDA(auto &ev) {
                 text += " ";
                 dirty = 1;
+                events.changed();
             };
 
             auto enter_key = new KeyButton(0, 0, btn_width, btn_height, "done");
@@ -250,22 +254,23 @@ namespace widgets {
                 }
 
                 text.push_back(c);
+                events.changed();
                 std::cerr << "key pressed:" << ' ' << c << std::endl;
             };
             return key;
         };
 
-        KeyButton *make_icon_button(icons::Icon icon, int w) {
+        KeyButton *make_icon_button(icons::Icon icon, int w) const {
             auto key = new KeyButton(0, 0, btn_width, btn_height, "");
             key->icon = icon;
             return key;
         };
 
-        void render() {
-            fb->draw_rect(x, y, w, h, WHITE, true);
+        void render() override {
+            //fb->draw_rect(x, y, w, h, WHITE, true);
         };
 
-        void show() {
+        void show() override {
             lower_layout();
         };
     };
