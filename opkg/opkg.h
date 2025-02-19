@@ -57,7 +57,9 @@ struct package{
     string Conffiles;
     string _provides_str;
     vector<shared_ptr<package>> Provides;
+    vector<shared_ptr<package>> ProvidedBy;
     bool Essential;
+    bool Virtual;
     //TODO: this is not great
     [[nodiscard]] bool Upgradable() const{ return IsInstalled() && InstalledVersion != UpstreamVersion; }
 };
@@ -77,6 +79,7 @@ public:
     vector<string> repositories;
     vector<string> sections;
     map<string,unordered_set<string>> sections_by_repo;
+    map<string,vector<shared_ptr<package>>> virtual_packages;
     static string FormatPackage(const shared_ptr<package>& package);
     static string formatDependencyTree(const shared_ptr<package>& pkg, bool excludeInstalled);
     int ComputeUninstall(const vector<shared_ptr<package>>& targets, bool includeDependencies, vector<shared_ptr<package>> *out_result);

@@ -54,7 +54,7 @@ int execute(const std::string& cmd, std::string& output) {
     stringstream ss;
     ss << "source ~/.bashrc; ";
     ss << "export LD_PRELOAD=${LD_PRELOAD%" << preload << "}; ";
-    ss << cmd << "; ";
+    ss << cmd << " 2>&1 ; ";
     ss << "export LD_PRELOAD=${LD_PRELOAD}:" << preload;
 
     auto pipe = popen(ss.str().c_str(), "r");
@@ -75,9 +75,8 @@ int execute(const std::string& cmd, const function<void (const std::string &)> &
     std::stringstream ss;
     ss << "source ~/.bashrc; ";
     ss << "export LD_PRELOAD=${LD_PRELOAD%" << preload << "}; ";
-    ss << cmd << "; ";
+    ss << cmd << " 2>&1; ";
     ss << "export LD_PRELOAD=${LD_PRELOAD}:" << preload;
-    ss << " 2>&1";
     auto pipe = popen(ss.str().c_str(), "r");
     if (!pipe) throw std::runtime_error("popen() failed!");
 
@@ -202,6 +201,19 @@ string opkg::FormatPackage(const shared_ptr<package> &pk) {
                 ss << d->Package << " ";
         ss << endl;
     }
+    if(!pk->Conflicts.empty()){
+        ss << "Conflicts with: ";
+        for(const auto &c : pk->Conflicts)
+            if(c->IsInstalled())
+                ss << c->Package << " ";
+        ss << endl;
+    }
+    if(!pk->Provides.empty()){
+        ss << "Provides: ";
+        for(const auto &p : pk->Provides)
+            ss << p->Package << " ";
+        ss << endl;
+    }
     return ss.str();
 }
 
@@ -321,6 +333,16 @@ bool opkg::split_str_and_find(const string& children_str, vector<shared_ptr<pack
                     field.push_back(it->second);
                     continue;
                 }
+
+                auto vpk = make_shared<package>(package{
+                        .Package = dsplit[0],
+                        .Virtual = true
+                });
+
+                packages.emplace(dsplit[0], vpk);
+                field.push_back(vpk);
+                //printf("Creating virtual package %s\n", dsplit[0].c_str());
+                continue;
             }
             err = true;
             //printf("Failed to resolve child %s for package\n", s.c_str());
@@ -330,6 +352,7 @@ bool opkg::split_str_and_find(const string& children_str, vector<shared_ptr<pack
     }
     return !err;
 }
+
 
 //after all packages are parsed, just roll through the list once to link dependent packages
 void opkg::link_dependencies(){
@@ -786,6 +809,7 @@ void opkg::InitializeRepositories() {
     link_dependencies();
     update_lists();
     update_states();
+
 }
 
 std::unordered_set<std::string> uninstall_cache;
