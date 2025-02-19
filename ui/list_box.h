@@ -367,7 +367,7 @@ namespace widgets {
                 _currentView.push_back(_sortedView[i]);
             }
 
-            pageOffset = min(maxPages() - 1, pageOffset);
+            pageOffset = max(0, min(maxPages() - 1, pageOffset));
 
             updatePageDisplay();
         }
