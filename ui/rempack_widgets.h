@@ -22,6 +22,7 @@ namespace widgets{
             children.push_back(pixmap);
             _keyboard = new Keyboard();
             _keyboard->events.changed += PLS_DELEGATE(onChange);
+            _keyboard->events.done += PLS_DELEGATE(onDone);
         }
 
         void on_reflow() override{
@@ -39,8 +40,11 @@ namespace widgets{
         shared_ptr<ui::Pixmap> pixmap;
 
         void onChange(KeyboardEvent ev){
-            this->text = ev.text;
-            mark_redraw();
+            set_text(ev.text);
+        }
+        void onDone(KeyboardEvent ev){
+            set_text(ev.text);
+            on_done(ev.text);
         }
     };
 
@@ -177,8 +181,8 @@ namespace widgets{
     class FilterOverlay: RoundCornerWidget{
     public:
         ui::Scene scene;
-        FilterOptions options;
-        FilterOverlay(int x, int y, int w, int h, FilterOptions &currentOptions): RoundCornerWidget(x,y,w,h,RoundCornerStyle()) {
+        shared_ptr<FilterOptions> options;
+        FilterOverlay(int x, int y, int w, int h, shared_ptr<FilterOptions> currentOptions): RoundCornerWidget(x,y,w,h,RoundCornerStyle()) {
             options = currentOptions;
             scene = make_overlay();
         }
@@ -209,7 +213,7 @@ namespace widgets{
 
     private:
         void upate_event(){
-            events.updated(options);
+            events.updated(*options);
             mark_redraw();
         }
         /*
@@ -235,33 +239,33 @@ namespace widgets{
             auto dx = x + padding;
             auto dy = y + padding;
             auto iTog = make_shared<ui::ToggleButton>(dx, dy, dw, 50, "Installed");
-            iTog->toggled = options.Installed;
+            iTog->toggled = options->Installed;
             iTog->style.justify = ui::Style::JUSTIFY::LEFT;
-            iTog->events.toggled += [this](bool s){options.Installed = s; upate_event();};
+            iTog->events.toggled += [this](bool s){options->Installed = s; upate_event();};
             children.push_back(iTog);
             dy += padding + iTog->h;
             auto uTog = make_shared<ui::ToggleButton>(dx, dy, dw, 50, "Upgradable");
-            uTog->toggled = options.Upgradable;
+            uTog->toggled = options->Upgradable;
             uTog->style.justify = ui::Style::JUSTIFY::LEFT;
-            uTog->events.toggled += [this](bool s){options.Upgradable = s; upate_event();};
+            uTog->events.toggled += [this](bool s){options->Upgradable = s; upate_event();};
             children.push_back(uTog);
             dy += padding + uTog->h;
             auto unTog = make_shared<ui::ToggleButton>(dx, dy, dw, 50, "Not Installed");
-            unTog->toggled = options.NotInstalled;
+            unTog->toggled = options->NotInstalled;
             unTog->style.justify = ui::Style::JUSTIFY::LEFT;
-            unTog->events.toggled += [this](bool s){options.NotInstalled = s; upate_event();};
+            unTog->events.toggled += [this](bool s){options->NotInstalled = s; upate_event();};
             children.push_back(unTog);
             dy += padding + unTog->h;
             auto descTog = make_shared<ui::ToggleButton>(dx,dy,dw,50, "Search Descriptions");
-            descTog->toggled = options.NotInstalled;
+            descTog->toggled = options->NotInstalled;
             descTog->style.justify = ui::Style::JUSTIFY::LEFT;
-            descTog->events.toggled += [this](bool s){options.SearchDescription = s; upate_event();};
+            descTog->events.toggled += [this](bool s){options->SearchDescription = s; upate_event();};
             children.push_back(descTog);
             dy += padding + descTog->h;
-            if(!options.Repos.empty()) {
+            if(!options->Repos.empty()) {
                 //TODO: set height of the list based on number of entries
                 _repoList = make_shared<ListBox>(dx, dy, dw, 200, 25);
-                for(auto &[r, set]: options.Repos){
+                for(auto &[r, set]: options->Repos){
                     auto item = _repoList->add(r);
                     if(set) {
                         item->_selected = true;
@@ -270,14 +274,14 @@ namespace widgets{
                 }
                 std::sort(_repoList->contents.begin(), _repoList->contents.end());
                 _repoList->mark_redraw();
-                _repoList->events.selected += [this](const shared_ptr<ListBox::ListItem>& li){ options.Repos[li->label] = true; upate_event(); };
-                _repoList->events.deselected += [this](const shared_ptr<ListBox::ListItem>& li){ options.Repos[li->label] = false; upate_event(); };
+                _repoList->events.selected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Repos[li->label] = true; upate_event(); };
+                _repoList->events.deselected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Repos[li->label] = false; upate_event(); };
                 children.push_back(_repoList);
                 dy += padding + _repoList->h;
             }
-            if(!options.Licenses.empty()) {
+            if(!options->Licenses.empty()) {
                 _licenseList = make_shared<ListBox>(dx, dy, dw, 200, 25);
-                for(auto &[l, set] : options.Licenses) {
+                for(auto &[l, set] : options->Licenses) {
                     auto item = _licenseList->add(l);
                     if(set) {
                         item->_selected = true;
@@ -286,8 +290,8 @@ namespace widgets{
                 }
                 children.push_back(_licenseList);
                 _licenseList->mark_redraw();
-                _licenseList->events.selected += [this](const shared_ptr<ListBox::ListItem>& li){ options.Licenses[li->label] = true; upate_event(); };
-                _licenseList->events.deselected += [this](const shared_ptr<ListBox::ListItem>& li){ options.Licenses[li->label] = false; upate_event(); };
+                _licenseList->events.selected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Licenses[li->label] = true; upate_event(); };
+                _licenseList->events.deselected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Licenses[li->label] = false; upate_event(); };
             }
             return s;
         }
@@ -296,8 +300,8 @@ namespace widgets{
     class FilterButton:public RoundImageButton{
     public:
         RoundCornerStyle style;
-        FilterOptions options;
-        FilterButton(int x, int y, int w, int h, FilterOptions &defaultOptions, RoundCornerStyle style = RoundCornerStyle()) : RoundImageButton(x, y, w, h, ICON(assets::png_filter_png), style) {
+        shared_ptr<FilterOptions> options;
+        FilterButton(int x, int y, int w, int h, shared_ptr<FilterOptions> defaultOptions, RoundCornerStyle style = RoundCornerStyle()) : RoundImageButton(x, y, w, h, ICON(assets::png_filter_png), style) {
             options = defaultOptions;
         }
         PLS_DEFINE_SIGNAL(FILTER_EVENT, FilterOptions);
@@ -310,7 +314,7 @@ namespace widgets{
         FILTER_EVENTS events;
 
         void on_overlay_hidden(ui::InnerScene::DialogVisible v){
-            events.updated(options);
+            //events.updated(options);
         }
 
         void on_mouse_click(input::SynMotionEvent &ev) override{
@@ -318,7 +322,7 @@ namespace widgets{
 
             auto ov = new FilterOverlay(x+w,y+h,500,800,options);
             ov->scene->on_hide += [=](auto &d) { on_overlay_hidden(d); };
-            ov->events.updated += [=](FilterOptions &o){events.updated(options);};
+            ov->events.updated += [=](FilterOptions &o){events.updated(o);};
             ov->show();
             ui::MainLoop::refresh();
         }

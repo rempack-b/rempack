@@ -61,9 +61,9 @@ void Rempack::startApp() {
 
 //for now though, I'll keep shoehorning it in here
 
-std::unordered_set<std::string> _filters;
+static std::unordered_set<std::string> _filters;
 shared_ptr<package> _selected;
-widgets::FilterOptions _filterOpts;
+shared_ptr<widgets::FilterOptions> _filterOpts;
 std::string _searchQuery = "";
 
 bool packageFilterDelegate(const shared_ptr<ListItem> &item) {
@@ -71,21 +71,21 @@ bool packageFilterDelegate(const shared_ptr<ListItem> &item) {
     bool visible = false;
     if (!_filters.empty() && _filters.find(pk->Section) == _filters.end())
         return false;
-    if(!_filterOpts.Licenses.empty() && !_filterOpts.Licenses.find(pk->License)->second)
+    if(!_filterOpts->Licenses.empty() && !_filterOpts->Licenses.find(pk->License)->second)
         return false;
-    if(!_filterOpts.Repos.empty() && !_filterOpts.Repos.find(pk->Repo)->second)
+    if(!_filterOpts->Repos.empty() && !_filterOpts->Repos.find(pk->Repo)->second)
         return false;
-    if(!((_filterOpts.Installed && pk->IsInstalled()) ||
-    (_filterOpts.NotInstalled && pk->State == package::NotInstalled)))
+    if(!((_filterOpts->Installed && pk->IsInstalled()) ||
+    (_filterOpts->NotInstalled && pk->State == package::NotInstalled)))
         return false;   //yes, I feel bad
-    // if(_filterOpts.Upgradable && !pk->_is_updatable)
+    // if(_filterOpts->Upgradable && !pk->_is_updatable)
     //    return false;
     if(!_searchQuery.empty()) {
         boyer::pattern pat;
         boyer::init_pattern(_searchQuery, pat);
         std::vector<size_t> indexes = boyer::search(pk->Package, pat);
         if (indexes.empty()) {
-            if(!_filterOpts.SearchDescription)
+            if(!_filterOpts->SearchDescription)
                 return false;
             indexes = boyer::search(pk->Description, pat);
             if (indexes.empty())
@@ -99,7 +99,7 @@ void searchQueryUpdate(string s){
     packagePanel->mark_redraw();
 }
 bool sectionFilterDelegate(const shared_ptr<ListItem> &item){
-    for(auto &[r,s]: _filterOpts.Repos){
+    for(auto &[r,s]: _filterOpts->Repos){
         if(s && CONTAINS(pkg.sections_by_repo[item->label], r))
             return true;
     }
@@ -132,7 +132,7 @@ void onPackageDeselect(shared_ptr<ListItem> item) {
     displayBox->mark_redraw();
 }
 void onFiltersChanged(widgets::FilterOptions &options){
-    _filterOpts = options;
+    //_filterOpts = options;
     filterPanel->mark_redraw();
     packagePanel->mark_redraw();
 }
@@ -201,13 +201,13 @@ ui::Scene buildHomeScene(int width, int height) {
     //short full-width pane containing search and menus
     auto searchPane = new ui::HorizontalReflow(0, 0, layout->w, 80, scene);
 
-    _filterOpts ={
+    _filterOpts = make_shared<widgets::FilterOptions>(widgets::FilterOptions{
             .Installed = true,
             .Upgradable = true,
             .NotInstalled = true,
-    };
+    });
     for(auto &r : pkg.repositories){
-        _filterOpts.Repos.emplace(r, r != "entware");   //hide entware by default, there's so many openwrt packages it drowns out toltec
+        _filterOpts->Repos.emplace(r, r != "entware");   //hide entware by default, there's so many openwrt packages it drowns out toltec
     }
     auto filterButton = new widgets::FilterButton(0,0,60,60, _filterOpts);
     filterButton->events.updated += onFiltersChanged;
