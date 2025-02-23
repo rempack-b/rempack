@@ -6,6 +6,7 @@
 
 #include <unordered_set>
 #include "widgets.h"
+
 namespace widgets {
     /*
      * Displays a list of items.
@@ -86,7 +87,7 @@ namespace widgets {
         vector<shared_ptr<ListItem>> contents;
         std::unordered_set<shared_ptr<ListItem>> selectedItems;
 
-        ListBox(int x, int y, int w, int h, int itemHeight) : RoundCornerWidget(x, y, w, h, RoundCornerStyle()) {
+        ListBox(int x, int y, int w, int h, int itemHeight, ui::Scene& scene) : RoundCornerWidget(x, y, w, h, RoundCornerStyle()) {
             this->itemHeight = itemHeight;
             _pageLabel = make_shared<ui::Text>(0,0,w,itemHeight,"");
 
@@ -104,6 +105,11 @@ namespace widgets {
             children.push_back(_navR);
             children.push_back(_navRR);
             children.push_back(_pageLabel);
+            scene->add(_navLL);
+            scene->add(_navL);
+            scene->add(_navR);
+            scene->add(_navRR);
+            scene->add(_pageLabel);
 
             _navLL->events.clicked += PLS_DELEGATE(LL_CLICK);
             _navL->events.clicked += PLS_DELEGATE(L_CLICK);
@@ -112,7 +118,7 @@ namespace widgets {
             layout_buttons();
         }
 
-        ListBox(int x, int y, int w, int h, int itemHeight, const vector<string>& items): ListBox(x,y,w,h,itemHeight) {
+        ListBox(int x, int y, int w, int h, int itemHeight, const vector<string>& items, ui::Scene& scene): ListBox(x,y,w,h,itemHeight,scene) {
             for(const auto &s: items){
                 this->add(s);
             }
@@ -131,7 +137,6 @@ namespace widgets {
         }
 
         bool remove(const string& label) {
-            //sure, you could use std::find but C++ Lambdas are an affront to all that is good in this world
             int i = 0;
             shared_ptr<ListItem> item = nullptr;
             for (; i < (int)contents.size(); i++) {
@@ -196,12 +201,11 @@ namespace widgets {
                 wi->render();
                 sy += itemHeight + padding;
             }
-            fb->waveform_mode = WAVEFORM_MODE_GC16;
         }
 
         //check the Y position relative to top of widget, divide by itemHeight
         void on_mouse_click(input::SynMotionEvent &ev) override {
-            ev.stop_propagation();
+            //ev.stop_propagation();
             if(!selectable)
                 return;
             auto hgt = itemHeight + padding;
