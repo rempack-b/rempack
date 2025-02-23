@@ -16,7 +16,7 @@ function kill_remote_app() {
 function cleanup() {
   kill_remote_app
   #ssh ${RM_USER}@${REMARKABLE_HOST} rm ${BASE_DIR}/${APP}
-  ssh ${RM_USER}@${REMARKABLE_HOST} launcherctl restart-launcher
+  ssh ${RM_USER}@${REMARKABLE_HOST} "source ~/.bashrc; launcherctl start-launcher"
   echo "FINISHED"
   trap - EXIT
   exit 0
@@ -31,5 +31,5 @@ scp ${APP_PATH} ${RM_USER}@${REMARKABLE_HOST}:${BASE_DIR}/${APP}
 kill_remote_app
 echo "RUNNING ${APP}"
 #remove rm2fb-client if you're running on a RM1
-ssh ${RM_USER}@${REMARKABLE_HOST} "systemctl stop remux; systemctl stop xochitl"
+ssh ${RM_USER}@${REMARKABLE_HOST} "source ~/.bashrc; killall gdbserver; launcherctl stop-launcher"
 ssh ${RM_USER}@${REMARKABLE_HOST} /opt/bin/rm2fb-client ${BASE_DIR}/${APP}
