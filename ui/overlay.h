@@ -22,7 +22,7 @@ namespace widgets {
             if(!this->scene)
                 build_dialog();
             visible = true;
-            mark_redraw();
+            //mark_redraw();
             this->scene->pinned = pinned;
             ui::MainLoop::show_overlay(this->scene, stack);
         }
@@ -32,9 +32,14 @@ namespace widgets {
             ui::MainLoop::hide_overlay(this->scene);
         }
 
+        bool cleared = false;
         void render() override {
-            border_widget->set_coords(x,y,w,h);
-            border_widget->render_inside_fill();
+            //border_widget->set_coords(x,y,w,h);
+            //border_widget->render_inside_fill();
+            //ui::Dialog::render();
+
+                border_widget->set_coords(x, y, w, h);
+                border_widget->render_inside_fill();
         }
 
         void mark_redraw() override {

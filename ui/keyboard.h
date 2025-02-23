@@ -255,7 +255,7 @@ namespace widgets {
 
                 text.push_back(c);
                 events.changed();
-                std::cerr << "key pressed:" << ' ' << c << std::endl;
+                //std::cerr << "key pressed:" << ' ' << c << std::endl;
             };
             return key;
         };

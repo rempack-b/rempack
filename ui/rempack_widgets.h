@@ -41,7 +41,11 @@ namespace widgets{
         shared_ptr<ui::Pixmap> pixmap;
 
         void onChange(KeyboardEvent ev){
-            set_text(_keyboard->text);
+            //need to do a full undraw in case characters were removed
+            RoundedTextInput::undraw();
+            set_text(_keyboard->text + '_');
+            //redraw the button we just erased
+            pixmap->mark_redraw();
         }
         void onDone(KeyboardEvent ev){
             set_text(ev.text);
@@ -265,7 +269,7 @@ namespace widgets{
             dy += padding + descTog->h;
             if(!options->Repos.empty()) {
                 //TODO: set height of the list based on number of entries
-                _repoList = make_shared<ListBox>(dx, dy, dw, 200, 25);
+                _repoList = make_shared<ListBox>(dx, dy, dw, 200, 25, scene);
                 for(auto &[r, set]: options->Repos){
                     auto item = _repoList->add(r);
                     if(set) {
@@ -281,7 +285,7 @@ namespace widgets{
                 dy += padding + _repoList->h;
             }
             if(!options->Licenses.empty()) {
-                _licenseList = make_shared<ListBox>(dx, dy, dw, 200, 25);
+                _licenseList = make_shared<ListBox>(dx, dy, dw, 200, 25, scene);
                 for(auto &[l, set] : options->Licenses) {
                     auto item = _licenseList->add(l);
                     if(set) {
@@ -368,19 +372,19 @@ namespace widgets{
             ui::TaskQueue::add_task([this](){this->update_texts();});
         }
         void on_reflow() override{
-            l1->on_reflow();
+            t1->on_reflow();
         }
         void mark_redraw() override{
-            layout->refresh();
+            //layout->refresh();
+            Overlay::mark_redraw();
         }
         void stdout_callback(const std::string &s){
-            std::cout << "LC:: " << s << std::endl;
             auto default_fs = ui::Style::DEFAULT.font_size;
             auto lines = utils::wrap_string(s, w - padding - padding, default_fs);
             for(const auto &l : lines)
                 push_line(l);
             update_texts();
-            mark_redraw();
+            //mark_redraw();
         }
         void set_callback(const std::function<void()> &cb){
             callback = cb;
@@ -409,7 +413,6 @@ void on_button_selected(std::string s) override{
         }
 
         void push_line(const std::string &l){
-    std::cout << "TD::PL:: " << l << std::endl;
             consoleBuffer.push_back(l);
             if(consoleBuffer.size() > buffer_size)
                 consoleBuffer.pop_front();
@@ -426,8 +429,8 @@ void on_button_selected(std::string s) override{
                 ss << l << std::endl;
             auto str = ss.str();
             l1->set_text(str.substr(0, str.size() - 2));
-            on_reflow();
-            Overlay::mark_redraw();
+            //on_reflow();
+            //Overlay::mark_redraw();
         }
     };
 
@@ -438,7 +441,7 @@ void on_button_selected(std::string s) override{
     * | Package version                                                                   |
     * | Package etc                                                                       |
     * |                                                                                   |
-    * | [Install(Upgrade)] [Uninstall] [Download] [Preview]            [Pending: [+0/-0]] |
+    * | [Install(Upgrade)] [Uninstall] /\*[Download] [Preview]     [Pending: [+0/-0]] *\/ |
     * ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
     */
     class PackageInfoPanel: public RoundCornerWidget{
@@ -594,7 +597,7 @@ void on_button_selected(std::string s) override{
             auto t1 = new ui::Text(dx, dy, dw, utils::line_height(), s1.str());
             layout.pack_start(t1);
             int lh = min((uint)300, ((labels.size() )* (utils::line_height()+5))+10);
-            auto l1 = new widgets::ListBox(dx, dy+padding, dw, lh, utils::line_height());
+            auto l1 = new widgets::ListBox(dx, dy+padding, dw, lh, utils::line_height(), scene);
             for (const auto &line: labels) {
                 l1->add(line);
             }
@@ -633,12 +636,14 @@ void on_button_selected(std::string s) override{
             auto td = new TerminalDialog(500,500,800,1100, "opkg install");
             td->set_callback([this](){this->_callback(this->_accepted);this->hide();});
             td->show();
-            auto ret = opkg::Install(packages, [td](const string s){td->stdout_callback(s);});
-            if(ret == 0)
-                td->stdout_callback("Done.");
-            else
-                td->stdout_callback("Error!");
-            std::cout << "opkg install returned with exit code " << ret << std::endl;
+            ui::TaskQueue::add_task([=](){
+                auto ret = opkg::Install(packages, [=](const string s) { td->stdout_callback(s); });
+                if (ret == 0)
+                    td->stdout_callback("Done.");
+                else
+                    td->stdout_callback("Error!");
+                std::cout << "opkg install returned with exit code " << ret << std::endl;
+            });
         }
     };
 
@@ -669,7 +674,7 @@ void on_button_selected(std::string s) override{
             int dw = w - padding - padding;
             t1 = new ui::Text(dx, dy, dw, utils::line_height(), "Loading...");
             layout->pack_start(t1);
-            l1 = new widgets::ListBox(dx, dy + padding, dw,  utils::line_height(), utils::line_height());
+            l1 = new widgets::ListBox(dx, dy + padding, dw,  utils::line_height(), utils::line_height(), scene);
             l1->selectable = false;
             layout->pack_start(l1);
             cb = new ui::ToggleButton(dx, dy + padding + padding, dw, utils::line_height(), "Auto-remove dependencies");

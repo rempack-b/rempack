@@ -115,7 +115,7 @@ void onFilterRemoved(shared_ptr<ListItem> item) {
 }
 void onPackageSelect(shared_ptr<ListItem> item) {
     auto pk = any_cast<shared_ptr<package>>(item->object);
-    printf("Package selected: %s\n", pk->Package.c_str());
+    //printf("Package selected: %s\n", pk->Package.c_str());
     _selected = pk;
     displayBox->set_states(pk->IsInstalled());
     displayBox->undraw();
@@ -124,7 +124,7 @@ void onPackageSelect(shared_ptr<ListItem> item) {
 }
 void onPackageDeselect(shared_ptr<ListItem> item) {
     auto pk = any_cast<shared_ptr<package>>(item->object);
-    printf("Package deselected: %s\n", pk->Package.c_str());
+    //printf("Package deselected: %s\n", pk->Package.c_str());
     _selected = nullptr;
     displayBox->set_states(false);
     displayBox->undraw();
@@ -154,10 +154,10 @@ void onInstallClick(void*){
     //m->set_title("installing your mom");
     m->setCallback([](bool pass){
         if(pass){
-            std::cout << "add install" << std::endl;
+            //std::cout << "add install" << std::endl;
             _menuData->PendingInstall.emplace(_selected->Package);
         }
-        std::cout << "pass install" << std::endl;
+        //std::cout << "pass install" << std::endl;
         displayBox->set_actions(_menuData->PendingInstall.size(), _menuData->PendingRemove.size());
     });
     m->show();
@@ -165,7 +165,7 @@ void onInstallClick(void*){
 void onUninstallClick(void*){
     auto m = new widgets::UninstallDialog(500,500,600,800,vector<shared_ptr<package>>{_selected});
     m->setCallback([](bool pass){
-       std::cout << "uninstall pass: " << pass << std::endl;
+       //std::cout << "uninstall pass: " << pass << std::endl;
         displayBox->set_actions(_menuData->PendingInstall.size(), _menuData->PendingRemove.size());
     });
     m->show();
@@ -182,8 +182,8 @@ void onEnactClick(void*){
 
 
 void setupDebug(){
-    //_selected = pkg.packages["dotnet-sdk"];
-    //onUninstallClick(nullptr);
+    //_selected = pkg.packages["splashscreen-suspended-dragon_curve"];
+    //onInstallClick(nullptr);
 }
 
 
@@ -222,7 +222,7 @@ ui::Scene buildHomeScene(int width, int height) {
     /* Applications */
     //full-width horizontal stack underneath the search pane. give it half the remaining height
     auto applicationPane = new ui::HorizontalReflow(0, 0, layout->w, (layout->h - searchPane->h - padding)/2, scene);
-    filterPanel = new widgets::ListBox(0, 0, 300, applicationPane->h, 30);
+    filterPanel = new widgets::ListBox(0, 0, 300, applicationPane->h, 30, scene);
     std::vector<std::string> sections;
     pkg.LoadSections(&sections);
     std::sort(sections.begin(), sections.end());
@@ -233,7 +233,7 @@ ui::Scene buildHomeScene(int width, int height) {
     filterPanel->events.selected += PLS_DELEGATE(onFilterAdded);
     filterPanel->events.deselected += PLS_DELEGATE(onFilterRemoved);
 
-    packagePanel = new widgets::ListBox(padding, 0, layout->w - filterPanel->w - padding, applicationPane->h, 30);
+    packagePanel = new widgets::ListBox(padding, 0, layout->w - filterPanel->w - padding, applicationPane->h, 30, scene);
     std::vector<std::string> packages;
     pkg.LoadPackages(&packages);
     std::sort(packages.begin(), packages.end());
