@@ -239,6 +239,7 @@ class EventButton : public ui::Button{
 
             //TODO: this still isn't quite right
         void undraw() override {
+            ui::Widget::undraw();
                 return;
             //top
             fb->draw_rect(x + style.inset - style.cornerRadius - style.borderThickness,
@@ -313,27 +314,15 @@ shared_ptr<RoundCornerWidget> border;
         border = make_shared<RoundCornerWidget>(x,y,w,h,style);
         children.push_back(border);
     }
-    void undraw() override {
-        auto sx = x - style.cornerRadius - style.borderThickness + style.inset;
-        auto sy = y - style.cornerRadius - style.borderThickness + style.inset;
-        auto dx = sx + w + style.cornerRadius + style.borderThickness + style.inset;
-        auto dy = sy + h + style.cornerRadius + style.borderThickness + style.inset;
-        fb->draw_rect(sx, sy, dx, dy, WHITE, true);
-    }
-     
-    void render() override {
-        fb->waveform_mode = WAVEFORM_MODE_GC16;
-        ui::TextInput::render();
-    }
 
     void on_reflow()override{
         border->set_coords(x,y,w,h);
         border->mark_redraw();
     }
 
-    void render_border() override{
-        border->style = style;
-        //stop parent class from rendering its border
+    void render() override{
+        //bypass TextInput::render to hide the border
+        ui::Text::render(); // NOLINT(*-parent-virtual-call)
     }
 };
 
