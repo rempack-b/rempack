@@ -42,18 +42,12 @@ upload package:
     - docker
   # uploads the output zip to package registry for semi-permanent retention
   script:
-    - BUILD_VERSION=$(grep -E '^#define BUILD_VERSION' include/build_vars.h | sed 's/#define BUILD_VERSION "\(.*\)"/\1/')
     - FILENAME="rempack"
-    - echo $FILENAME
-    - echo "URL=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${BUILD_VERSION}/${FILENAME}" >> variables.env
-    - echo "FILENAME=${FILENAME}" >> variables.env
+    - URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${CI_COMMIT_TAG}/${FILENAME}"
 
-    - 'curl --fail-with-body --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "output/${FILENAME}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${BUILD_VERSION}/${FILENAME}"'
+    - 'curl --fail-with-body --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "output/${FILENAME}" "${URL}"'
   only:
     - tags # Run this job only for tag commits
-  artifacts:
-    reports:
-      dotenv: variables.env
 
 release:
   stage: release
@@ -65,6 +59,8 @@ release:
     - upload package
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   script:
+    - FILENAME="rempack"
+    - URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${CI_COMMIT_TAG}/${FILENAME}"
     - echo $FILENAME
     - echo $URL
     - echo "running release_job for ${CI_COMMIT_TAG}"
