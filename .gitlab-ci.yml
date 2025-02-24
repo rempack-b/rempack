@@ -27,10 +27,13 @@ build:       # This job runs in the build stage, which runs first.
   script:
     - echo "Building..."
     - cmake . --preset "Release Native" -U RMKIT_EXTERN
+    - ls
+    - mkdir output
+    - cp cmake-build-release-native/rempack output/rempack
     - echo "Compile complete."
   artifacts:
     paths:
-      - cmake-build-release-native/rempack
+      - output/
 
 upload package:
   stage: package
@@ -42,12 +45,12 @@ upload package:
   # uploads the output zip to package registry for semi-permanent retention
   script:
     - BUILD_VERSION=$(grep -E '^#define BUILD_VERSION' include/build_vars.h | sed 's/#define BUILD_VERSION "\(.*\)"/\1/')
-    - FILENAME=cmake-build-release-native/rempack
+    - FILENAME="rempack"
     - echo $FILENAME
     - echo "URL=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${BUILD_VERSION}/${FILENAME}" >> variables.env
     - echo "FILENAME=${FILENAME}" >> variables.env
 
-    - 'curl --fail-with-body --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "${FILENAME}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${BUILD_VERSION}/${FILENAME}"'
+    - 'curl --fail-with-body --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "output/${FILENAME}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${BUILD_VERSION}/${FILENAME}"'
   only:
     - tags # Run this job only for tag commits
   artifacts:
