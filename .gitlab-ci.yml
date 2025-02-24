@@ -70,5 +70,5 @@ release:
     ref: '$CI_COMMIT_SHA'
     assets:
       links:
-        - name: '$FILENAME'
-          url: '$URL'
+        - name: $FILENAME
+          url: $URL
