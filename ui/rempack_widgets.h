@@ -140,12 +140,12 @@ namespace widgets{
             auto s = ui::make_scene();
             s->add(this);
             mark_redraw();
-            auto v = ui::VerticalLayout(x, y, 500, 800, s);
+            auto v = ui::VerticalLayout(x, y + padding, 500, 800, s);
             auto dw = 500 - padding - padding;
             auto dh = 800 - padding - padding;
             auto dx = v.x + padding;
             auto dy = v.y + padding;
-            auto updateBtn = new EventButton(0,0,dw,utils::line_height(),"Refresh Repositories");
+            auto updateBtn = new EventButton(padding,padding,dw,utils::line_height(),"Refresh Repositories");
             updateBtn->events.clicked += PLS_DELEGATE(refresh_event);
             v.pack_start(updateBtn);
             return s;
@@ -247,18 +247,21 @@ namespace widgets{
             iTog->toggled = options->Installed;
             iTog->style.justify = ui::Style::JUSTIFY::LEFT;
             iTog->events.toggled += [this](bool s){options->Installed = s; upate_event();};
+            s->add(iTog);
             children.push_back(iTog);
             dy += padding + iTog->h;
             auto uTog = make_shared<ui::ToggleButton>(dx, dy, dw, 50, "Upgradable");
             uTog->toggled = options->Upgradable;
             uTog->style.justify = ui::Style::JUSTIFY::LEFT;
             uTog->events.toggled += [this](bool s){options->Upgradable = s; upate_event();};
-            children.push_back(uTog);
-            dy += padding + uTog->h;
+            //children.push_back(uTog);
+            //s->add(uTog);
+            //dy += padding + uTog->h;
             auto unTog = make_shared<ui::ToggleButton>(dx, dy, dw, 50, "Not Installed");
             unTog->toggled = options->NotInstalled;
             unTog->style.justify = ui::Style::JUSTIFY::LEFT;
             unTog->events.toggled += [this](bool s){options->NotInstalled = s; upate_event();};
+            s->add(unTog);
             children.push_back(unTog);
             dy += padding + unTog->h;
             auto descTog = make_shared<ui::ToggleButton>(dx,dy,dw,50, "Search Descriptions");
@@ -266,10 +269,11 @@ namespace widgets{
             descTog->style.justify = ui::Style::JUSTIFY::LEFT;
             descTog->events.toggled += [this](bool s){options->SearchDescription = s; upate_event();};
             children.push_back(descTog);
+            s->add(descTog);
             dy += padding + descTog->h;
             if(!options->Repos.empty()) {
                 //TODO: set height of the list based on number of entries
-                _repoList = make_shared<ListBox>(dx, dy, dw, 200, 25, scene);
+                _repoList = make_shared<ListBox>(dx, dy, dw, 200, 25, s);
                 for(auto &[r, set]: options->Repos){
                     auto item = _repoList->add(r);
                     if(set) {
@@ -282,6 +286,7 @@ namespace widgets{
                 _repoList->events.selected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Repos[li->label] = true; upate_event(); };
                 _repoList->events.deselected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Repos[li->label] = false; upate_event(); };
                 children.push_back(_repoList);
+                s->add(_repoList);
                 dy += padding + _repoList->h;
             }
             if(!options->Licenses.empty()) {
@@ -294,6 +299,7 @@ namespace widgets{
                     }
                 }
                 children.push_back(_licenseList);
+                s->add(_licenseList);
                 _licenseList->mark_redraw();
                 _licenseList->events.selected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Licenses[li->label] = true; upate_event(); };
                 _licenseList->events.deselected += [this](const shared_ptr<ListBox::ListItem>& li){ options->Licenses[li->label] = false; upate_event(); };

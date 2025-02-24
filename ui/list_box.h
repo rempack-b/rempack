@@ -87,7 +87,7 @@ namespace widgets {
         vector<shared_ptr<ListItem>> contents;
         std::unordered_set<shared_ptr<ListItem>> selectedItems;
 
-        ListBox(int x, int y, int w, int h, int itemHeight, ui::Scene& scene) : RoundCornerWidget(x, y, w, h, RoundCornerStyle()) {
+        ListBox(int x, int y, int w, int h, int itemHeight, const shared_ptr<ui::InnerScene>& s) : RoundCornerWidget(x, y, w, h, RoundCornerStyle()) {
             this->itemHeight = itemHeight;
             _pageLabel = make_shared<ui::Text>(0,0,w,itemHeight,"");
 
@@ -105,11 +105,11 @@ namespace widgets {
             children.push_back(_navR);
             children.push_back(_navRR);
             children.push_back(_pageLabel);
-            scene->add(_navLL);
-            scene->add(_navL);
-            scene->add(_navR);
-            scene->add(_navRR);
-            scene->add(_pageLabel);
+            s->add(_navLL);
+            s->add(_navL);
+            s->add(_navR);
+            s->add(_navRR);
+            s->add(_pageLabel);
 
             _navLL->events.clicked += PLS_DELEGATE(LL_CLICK);
             _navL->events.clicked += PLS_DELEGATE(L_CLICK);
