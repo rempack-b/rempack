@@ -59,16 +59,16 @@ release:
     - upload package
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   script:
-    - export FILENAME=rempack
-    - export URL=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${CI_COMMIT_TAG}/${FILENAME}
+    - FILENAME=rempack
+    - URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${CI_COMMIT_TAG}/${FILENAME}"
     - echo $FILENAME
     - echo $URL
     - echo "running release_job for ${CI_COMMIT_TAG}"
   release:
     tag_name: '$CI_COMMIT_TAG'
-    description: 'Rempack binary: [$FILENAME]($URL)'
+    description: "Rempack binary: [${FILENAME}](${URL})\n${CI_COMMIT_MESSAGE}"
     ref: '$CI_COMMIT_SHA'
     assets:
       links:
-        - name: '$FILENAME'
-          url: '$URL'
+        - name: "${FILENAME}"
+          url: "${URL}"
