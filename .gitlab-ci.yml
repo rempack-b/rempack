@@ -18,6 +18,8 @@
 
 stages:          # List of stages for jobs, and their order of execution
   - build
+  - package
+  - release
 
 build-job:       # This job runs in the build stage, which runs first.
   stage: build
@@ -26,4 +28,50 @@ build-job:       # This job runs in the build stage, which runs first.
     - echo "Building..."
     - cmake . --preset "Release Native" -U RMKIT_EXTERN
     - echo "Compile complete."
+  artifacts:
+    paths:
+      - cmake-build-release-native/rempack
 
+upload package:
+  stage: package
+  image: curlimages/curl:latest
+  dependencies:
+    - build
+  tags:
+    - docker
+  # uploads the output zip to package registry for semi-permanent retention
+  script:
+    - BUILD_VERSION=$(grep -E '^#define BUILD_VERSION' include/build_vars.h | sed 's/#define BUILD_VERSION "\(.*\)"/\1/')
+    - FILENAME=cmake-build-release-native/rempack
+    - echo $FILENAME
+    - echo "URL=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${BUILD_VERSION}/${FILENAME}" >> variables.env
+    - echo "FILENAME=${FILENAME}" >> variables.env
+
+    - 'curl --fail-with-body --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "${FILENAME}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/rempack/${BUILD_VERSION}/${FILENAME}"'
+  only:
+    - tags # Run this job only for tag commits
+  artifacts:
+    reports:
+      dotenv: variables.env
+
+release:
+  stage: release
+  tags:
+    - docker
+  only:
+    - tags # Run this job only for tag commits
+  dependencies:
+    - upload package
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo $FILENAME
+    - echo $URL
+    - echo "running release_job for ${CI_COMMIT_TAG}"
+  release:
+    tag_name: '$CI_COMMIT_TAG'
+    description: 'Rempack binary: [$FILENAME]($URL)'
+    ref: '$CI_COMMIT_SHA'
+    assets:
+      links:
+        - name: '$FILENAME'
+          url: '$URL'
